@@ -1,0 +1,56 @@
+{
+  "_comment": "Curated aliases for backend/templates/Hikma orders.xlsx. Only add exact_aliases when the written phrase resolves unambiguously to one catalog row. Verified against the live catalog on 2026-07-25 (rows 3-14).",
+  "exact_aliases": [
+    {
+      "written": "اتكيور",
+      "row": 3,
+      "official_name": "ATACURE 50 MG / 5 ML (ATRACURIUM BESILATE)"
+    },
+    {
+      "written": "ميدازولام",
+      "row": 6,
+      "official_name": "Hikma Midazolam 15MG/3ML IV/IM,5 AMP"
+    },
+    {
+      "written": "فانكو 500",
+      "row": 14,
+      "official_name": "VANCO 500MG IV INFU VIALS 1's"
+    },
+    {
+      "written": "فانكو 500 مغ",
+      "row": 14,
+      "official_name": "VANCO 500MG IV INFU VIALS 1's"
+    },
+    {
+      "written": "فانكو 500 ملغ",
+      "row": 14,
+      "official_name": "VANCO 500MG IV INFU VIALS 1's"
+    },
+    {
+      "written": "فانكو 1 غرام",
+      "row": 13,
+      "official_name": "VANCO 1G IV INFU VIALS ( VANCOMYCIN 1G IV )"
+    },
+    {
+      "written": "فانكو 1غرام",
+      "row": 13,
+      "official_name": "VANCO 1G IV INFU VIALS ( VANCOMYCIN 1G IV )"
+    },
+    {
+      "written": "فانكو غرام",
+      "row": 13,
+      "official_name": "VANCO 1G IV INFU VIALS ( VANCOMYCIN 1G IV )"
+    },
+    {
+      "written": "فانكو 1g",
+      "row": 13,
+      "official_name": "VANCO 1G IV INFU VIALS ( VANCOMYCIN 1G IV )"
+    }
+  ],
+  "brand_aliases": [
+    {
+      "written": "فانكو",
+      "brand": "vanco"
+    }
+  ]
+}

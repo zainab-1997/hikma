@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+database/*.db
+.pytest_cache/
+generated_orders/*
+!generated_orders/.gitkeep
+

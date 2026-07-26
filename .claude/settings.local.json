@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p backend/api backend/services backend/prompts backend/excel/templates backend/database backend/memory backend/models backend/utils)",
+      "Bash(mkdir -p frontend/src/components frontend/src/pages frontend/src/hooks frontend/src/services)",
+      "Bash(touch backend/api/__init__.py backend/services/__init__.py backend/prompts/__init__.py backend/excel/__init__.py backend/database/__init__.py backend/memory/__init__.py backend/models/__init__.py backend/utils/__init__.py)",
+      "Bash(touch frontend/src/components/.gitkeep frontend/src/pages/.gitkeep frontend/src/hooks/.gitkeep frontend/src/services/.gitkeep backend/excel/templates/.gitkeep)",
+      "Bash(npm run *)",
+      "Bash(node -e \"require.resolve\\('playwright'\\)\")",
+      "Bash(npx --no-install playwright --version)",
+      "Bash(npm ls *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173)",
+      "Bash(curl -sf http://localhost:8000/health)",
+      "Bash(break)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(curl -s -i -X POST http://localhost:8000/api/orders/parse -H 'Content-Type: application/json' -H 'Origin: http://localhost:5173' -d '{\"message\": \"صيدلية العين\\\\nفانكو ٥٠\"}')",
+      "Bash(lsof -ti:8000 -sTCP:LISTEN)",
+      "Bash(xargs -r kill)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8000/health)"
+    ]
+  }
+}
