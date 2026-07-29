@@ -29,6 +29,7 @@ Customer:
   - if the name starts with "مكتب" -> "office"
   - otherwise -> "unknown"
 - governorate: only if explicitly stated, otherwise null. Never guess.
+- city: only if explicitly stated, otherwise null. Never guess.
 - area: only if explicitly stated, otherwise null. Never guess.
 - phone_number: only if explicitly stated, otherwise null.
 
@@ -38,6 +39,9 @@ Transit (used only when the message clearly routes an order through one customer
 - destination_customer: the second/destination party exactly as written, or null.
 - destination_type: classify destination_customer using the same customer_type rules above,
   or "unknown" if not applicable.
+- source_location and destination_location: explicit locations associated with each party.
+- destination_governorate, destination_city, destination_area: location details explicitly
+  associated with the destination. Never guess.
 Do not normalize transit party names. Do not reorder them.
 
 Products (one entry per product line):

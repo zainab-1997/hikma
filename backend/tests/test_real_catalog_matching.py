@@ -88,3 +88,30 @@ def test_real_frontend_match_route_returns_one_safe_catalog_family_candidate(
     assert product["match_status"] == "matched"
     assert product["matched_row"] == expected_row
     assert [candidate["row"] for candidate in product["candidates"]] == [expected_row]
+
+
+@pytest.mark.parametrize("written", ["فانكو ٥٠٠", "vanco 0.5", "VANCO 500mg"])
+def test_same_real_catalog_input_is_deterministic_across_separate_orders(written):
+    client = TestClient(app)
+    rows = []
+    candidates = []
+    for order_number in range(3):
+        payload = {
+            "customer": {"customer_name": f"Test Pharmacy {order_number}", "customer_type": "pharmacy"},
+            "transit": {"is_transit": False, "destination_type": "unknown"},
+            "order_title": f"Test Pharmacy {order_number}",
+            "price_type": "pharmacy",
+            "price_type_requires_confirmation": False,
+            "products": [{"written_product_name": written, "quantity": 10}],
+            "confidence_score": 1,
+            "can_generate_excel": False,
+            "can_proceed_to_product_matching": True,
+        }
+        response = client.post("/api/orders/match-products", json=payload)
+        assert response.status_code == 200
+        product = response.json()["products"][0]
+        rows.append(product["matched_row"])
+        candidates.append(product["candidates"])
+
+    assert rows == [14, 14, 14]
+    assert candidates[0] == candidates[1] == candidates[2]

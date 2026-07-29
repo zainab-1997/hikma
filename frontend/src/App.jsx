@@ -96,6 +96,7 @@ function App() {
 
     setStatus({ type: '', message: '' })
     setGeneratedOrder(null)
+    setApprovedSelections({})
     setIsReapplying(true)
 
     try {
@@ -115,7 +116,21 @@ function App() {
   }
 
   const handleCustomerFieldChange = (field, value) => {
-    setEditableOrder((prev) => prev && { ...prev, customer: { ...prev.customer, [field]: value } })
+    setEditableOrder((prev) => {
+      if (!prev) return prev
+      const transitField = {
+        governorate: 'destination_governorate',
+        city: 'destination_city',
+        area: 'destination_area',
+      }[field]
+      return {
+        ...prev,
+        customer: { ...prev.customer, [field]: value },
+        transit: transitField && prev.transit.is_transit
+          ? { ...prev.transit, [transitField]: value }
+          : prev.transit,
+      }
+    })
   }
 
   const handleTransitFieldChange = (field, value) => {
@@ -130,6 +145,7 @@ function App() {
     const nextOrder = { ...editableOrder, products }
     setEditableOrder(nextOrder)
     setGeneratedOrder(null)
+    setApprovedSelections({})
 
     const requestNumber = validationRequestRef.current + 1
     validationRequestRef.current = requestNumber
@@ -230,11 +246,17 @@ function App() {
       customer_name: reviewResult.customer.customer_name,
       customer_type: reviewResult.customer.customer_type,
       governorate: reviewResult.customer.governorate,
+      city: reviewResult.customer.city,
       area: reviewResult.customer.area,
       phone_number: reviewResult.customer.phone_number,
       is_transit: reviewResult.transit.is_transit,
       primary_customer: reviewResult.transit.primary_customer,
       destination_customer: reviewResult.transit.destination_customer,
+      source_location: reviewResult.transit.source_location,
+      destination_location: reviewResult.transit.destination_location,
+      destination_governorate: reviewResult.transit.destination_governorate,
+      destination_city: reviewResult.transit.destination_city,
+      destination_area: reviewResult.transit.destination_area,
       source_message: message,
       parser_confidence_score: reviewResult.confidence_score,
       client_request_id: clientRequestId,

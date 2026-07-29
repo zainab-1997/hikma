@@ -2,6 +2,11 @@ import GeneratedOrderReview from './GeneratedOrderReview'
 import ProductMatchCard from './ProductMatchCard'
 
 const CUSTOMER_TYPE_OPTIONS = ['pharmacy', 'hospital', 'drug_store', 'office', 'unknown']
+const IRAQI_GOVERNORATES = [
+  'بغداد', 'البصرة', 'نينوى', 'كربلاء', 'النجف', 'أربيل', 'السليمانية', 'كركوك',
+  'الأنبار', 'ديالى', 'واسط', 'بابل', 'الديوانية', 'المثنى', 'ميسان', 'ذي قار',
+  'صلاح الدين', 'دهوك',
+]
 
 function formatLabel(value) {
   if (!value) return 'Unknown'
@@ -74,8 +79,13 @@ function OrderPreview({
               </select>
             </label>
             <label className="field"><span className="field__label">Governorate</span>
-              <input type="text" className="field__input" dir="auto" placeholder="Not specified"
+              <input type="text" className="field__input" dir="auto" placeholder="Not specified" list="iraqi-governorates"
                 value={editableOrder.customer.governorate || ''} onChange={(event) => onCustomerFieldChange('governorate', event.target.value)} />
+              <datalist id="iraqi-governorates">{IRAQI_GOVERNORATES.map((item) => <option key={item} value={item} />)}</datalist>
+            </label>
+            <label className="field"><span className="field__label">City</span>
+              <input type="text" className="field__input" dir="auto" placeholder="Not specified"
+                value={editableOrder.customer.city || ''} onChange={(event) => onCustomerFieldChange('city', event.target.value)} />
             </label>
             <label className="field"><span className="field__label">Area</span>
               <input type="text" className="field__input" dir="auto" placeholder="Not specified"
@@ -106,6 +116,14 @@ function OrderPreview({
               <label className="field"><span className="field__label">Transit To</span>
                 <input type="text" className="field__input" dir="auto" value={editableOrder.transit.destination_customer || ''}
                   onChange={(event) => onTransitFieldChange('destination_customer', event.target.value)} /></label>
+              <label className="field"><span className="field__label">Destination Governorate</span>
+                <input type="text" className="field__input" dir="auto" list="iraqi-governorates"
+                  value={editableOrder.customer.governorate || ''}
+                  onChange={(event) => onCustomerFieldChange('governorate', event.target.value)} /></label>
+              <label className="field"><span className="field__label">Destination Location</span>
+                <input type="text" className="field__input" dir="auto"
+                  value={editableOrder.transit.destination_location || ''}
+                  onChange={(event) => onTransitFieldChange('destination_location', event.target.value)} /></label>
               <div className="field"><span className="field__label">Destination Type</span>
                 <p className="field__readonly">{formatLabel(reviewResult.transit.destination_type)}</p></div>
             </div>}
@@ -171,7 +189,9 @@ function OrderPreview({
         </button>
       </section>
 
-      {generatedOrder && <GeneratedOrderReview generatedOrder={generatedOrder} onNewOrder={onNewOrder} />}
+      {generatedOrder && <GeneratedOrderReview generatedOrder={generatedOrder}
+        reviewResult={reviewResult} matchResult={matchResult}
+        approvedSelections={approvedSelections} onNewOrder={onNewOrder} />}
     </div>
   )
 }

@@ -154,6 +154,29 @@ def test_arabic_letters_diacritics_numbers_and_units_are_normalized():
 
 
 @pytest.mark.parametrize(
+    ("written", "expected"),
+    [
+        ("٥٠٠ ملغ", "500 mg"),
+        ("٥٠٠ ملغم", "500 mg"),
+        ("٥٠٠ مليغرام", "500 mg"),
+        ("٥٠٠ ملي غرام", "500 mg"),
+        ("٥٠٠ مغ", "500 mg"),
+        ("١ غ", "1 g"),
+        ("١ غم", "1 g"),
+        ("١ غرام", "1 g"),
+        ("١ جرام", "1 g"),
+        ("١٠٠٠ مكغ", "1000 mcg"),
+        ("١٠٠٠ ميكروغرام", "1000 mcg"),
+        ("١٠٠٠ ميكرو غرام", "1000 mcg"),
+        ("500 ملغ", "500 mg"),
+        ("۵۰۰ ملغ", "500 mg"),
+    ],
+)
+def test_all_common_arabic_mass_unit_spellings_are_canonical(written, expected):
+    assert normalize_product_text(written) == expected
+
+
+@pytest.mark.parametrize(
     "written",
     [
         "MED 500mg",

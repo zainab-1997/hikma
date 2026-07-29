@@ -119,7 +119,7 @@ def test_transit_title_formatting():
             customer=_customer(customer_name=None, customer_type="unknown", governorate="النجف"),
         )
     )
-    assert result.order_title == "مذخر الوافي - Transit - صيدلية العين - النجف"
+    assert result.order_title == "مذخر الوافي - ترانزيت - صيدلية العين - النجف"
 
 
 # 8. Transit pricing based on primary customer.

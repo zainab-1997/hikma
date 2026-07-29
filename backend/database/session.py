@@ -22,6 +22,12 @@ from config.settings import get_settings
 _ADDITIVE_ORDER_COLUMNS = [
     ("email_status", "VARCHAR(16)"),
     ("last_email_sent_at", "DATETIME"),
+    ("city", "VARCHAR(128)"),
+    ("source_location", "VARCHAR(255)"),
+    ("destination_location", "VARCHAR(255)"),
+    ("destination_governorate", "VARCHAR(128)"),
+    ("destination_city", "VARCHAR(128)"),
+    ("destination_area", "VARCHAR(128)"),
 ]
 
 

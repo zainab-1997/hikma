@@ -18,7 +18,7 @@ from database.session import init_db, session_scope
 from excel.catalog_reader import CatalogProduct
 from excel.order_writer import ExcelGenerationError
 from models.generate_order_models import ConfirmedMatchedProduct, GenerateOrderRequest
-from services.order_persistence_service import generate_and_persist_order
+from services.order_persistence_service import generate_and_persist_order, get_order_detail
 
 CATALOG = (
     CatalogProduct(row=3, official_name="Alpha Tablet 50MG"),
@@ -91,6 +91,33 @@ def _setup(tmp_path):
     source = _build_template_workbook(tmp_path)
     output_dir = tmp_path / "generated"
     return url, source, output_dir
+
+
+def test_transit_route_title_is_identical_in_persistence_history_and_workbook(tmp_path):
+    url, source, output_dir = _setup(tmp_path)
+    response = generate_and_persist_order(
+        _request(
+            order_title="stale - Transit - title",
+            customer_name="مذخر ساوا",
+            is_transit=True,
+            primary_customer="مذخر ساوا",
+            destination_customer="مستشفى الكوثر",
+        ),
+        database_url=url,
+        catalog=CATALOG,
+        source_path=source,
+        output_dir=output_dir,
+    )
+
+    expected = "مذخر ساوا - ترانزيت - مستشفى الكوثر - النجف"
+    detail = get_order_detail(response.order_id, database_url=url)
+    workbook = openpyxl.load_workbook(output_dir / response.filename, data_only=False)
+
+    assert detail is not None
+    assert detail.order_title == expected
+    assert workbook.active["A1"].value == expected
+    assert "ترانزيت" in response.filename
+    assert "Transit" not in response.filename
 
 
 # --- no save when generation fails ----------------------------------------------------------

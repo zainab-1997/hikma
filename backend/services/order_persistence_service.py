@@ -33,8 +33,10 @@ from services.excel_generation_service import (
     delete_generated_file,
     generate_excel_order,
     resolve_generated_file_path,
+    standardize_order_request,
 )
 from services.product_matching_service import _profile
+from utils.route_format import build_order_title
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +59,17 @@ def _order_input_from_request(request: GenerateOrderRequest, generation) -> Orde
         customer_name=request.customer_name,
         customer_type=request.customer_type,
         governorate=request.governorate,
+        city=request.city,
         area=request.area,
         phone_number=request.phone_number,
         is_transit=request.is_transit,
         primary_customer=request.primary_customer,
         destination_customer=request.destination_customer,
+        source_location=request.source_location,
+        destination_location=request.destination_location,
+        destination_governorate=request.destination_governorate,
+        destination_city=request.destination_city,
+        destination_area=request.destination_area,
         source_message=request.source_message,
         parser_confidence_score=request.parser_confidence_score,
         client_request_id=request.client_request_id,
@@ -161,6 +169,13 @@ def _order_to_response(
     return GeneratedOrderResponse(
         order_id=order.id,
         order_number=order.order_number,
+        order_title=build_order_title(
+            source_location=order.primary_customer if order.is_transit else order.customer_name,
+            is_transit=order.is_transit,
+            destination_customer=order.destination_customer,
+            governorate=order.destination_governorate or order.governorate,
+            area=order.destination_area,
+        ),
         filename=order.generated_filename,
         download_url=f"/api/orders/download/{order.generated_file_id}",
         selected_price_type=order.selected_price_type,
@@ -177,6 +192,7 @@ def generate_and_persist_order(
 ) -> GeneratedOrderResponse:
     """database_url and **generation_kwargs (catalog/source_path/output_dir) are
     overridable so tests never need the real database or the real Hikma template."""
+    request = standardize_order_request(request)
     if request.client_request_id:
         with session_scope(database_url) as session:
             existing = order_repository.find_order_by_client_request_id(session, request.client_request_id)
@@ -224,12 +240,22 @@ def generate_and_persist_order(
 
 
 def _to_summary(order) -> OrderSummary:
+    order_title = build_order_title(
+        source_location=order.primary_customer if order.is_transit else order.customer_name,
+        is_transit=order.is_transit,
+        destination_customer=order.destination_customer,
+        governorate=order.destination_governorate or order.governorate,
+        area=order.destination_area,
+    )
     return OrderSummary(
         order_id=order.id,
         order_number=order.order_number,
+        order_title=order_title,
+        is_transit=order.is_transit,
         customer_name=order.customer_name,
         customer_type=order.customer_type,
         governorate=order.governorate,
+        city=order.city,
         selected_price_type=order.selected_price_type,
         selected_order_total=order.selected_order_total,
         created_at=order.created_at,
@@ -240,18 +266,31 @@ def _to_summary(order) -> OrderSummary:
 
 
 def _to_detail(order) -> OrderDetail:
+    order_title = build_order_title(
+        source_location=order.primary_customer if order.is_transit else order.customer_name,
+        is_transit=order.is_transit,
+        destination_customer=order.destination_customer,
+        governorate=order.destination_governorate or order.governorate,
+        area=order.destination_area,
+    )
     return OrderDetail(
         order_id=order.id,
         order_number=order.order_number,
         customer_name=order.customer_name,
         customer_type=order.customer_type,
         governorate=order.governorate,
+        city=order.city,
         area=order.area,
         phone_number=order.phone_number,
-        order_title=order.order_title,
+        order_title=order_title,
         is_transit=order.is_transit,
         primary_customer=order.primary_customer,
         destination_customer=order.destination_customer,
+        source_location=order.source_location,
+        destination_location=order.destination_location,
+        destination_governorate=order.destination_governorate,
+        destination_city=order.destination_city,
+        destination_area=order.destination_area,
         selected_price_type=order.selected_price_type,
         selected_order_total=order.selected_order_total,
         generated_filename=order.generated_filename,

@@ -161,7 +161,7 @@ function OrderHistory() {
               const created = formatDate(order.created_at)
               return <tr key={order.order_id}>
                 <td><strong className="history-order-number">{order.order_number}</strong></td>
-                <td dir="auto"><strong>{order.customer_name || 'Not provided'}</strong><small>{order.customer_type ? order.customer_type.replace('_', ' ') : 'Unknown type'}</small></td>
+                <td dir="auto"><strong>{order.order_title || order.customer_name || 'Not provided'}</strong><small>{order.customer_type ? order.customer_type.replace('_', ' ') : 'Unknown type'}</small></td>
                 <td dir="auto">{order.governorate || 'Not provided'}</td>
                 <td><span className="record-badge">{formatPriceType(order.selected_price_type)}</span></td>
                 <td className="numeric-cell"><strong>{order.selected_order_total.toLocaleString()}</strong><small> IQD</small></td>

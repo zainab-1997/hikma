@@ -7,9 +7,9 @@ _ARABIC_INDIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
 _EASTERN_ARABIC_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")
 
 _TERM_REPLACEMENTS = (
-    (r"\b(?:micrograms?|microgrammes?|ميكروغرام|مايكروغرام|مكغ)\b", " mcg "),
-    (r"\b(?:milligrams?|milli?grams?|مليغرام|مليجرام|ملغم|ملغ|مغم|مغ)\b", " mg "),
-    (r"\b(?:grams?|غرام|جرام|غم)\b", " g "),
+    (r"\b(?:micrograms?|microgrammes?|ميكرو\s*غرام|مايكرو\s*غرام|مكغ)\b", " mcg "),
+    (r"\b(?:milligrams?|milli?grams?|ملي\s*غرام|ملي\s*جرام|ملغم|ملغ|مغم|مغ)\b", " mg "),
+    (r"\b(?:grams?|غرام|جرام|غم|غ)\b", " g "),
     (r"\b(?:millilitre|millilitres|milliliter|milliliters|مليلتر|ملليلتر|مل)\b", " ml "),
     (r"\b(?:international units?|i\.?\s*u\.?|units?|وحدات?|وحد[هة] دولي[هة])\b", " iu "),
     (r"\b(?:ampoules?|ampules?|amps?|امبولات?|امبول)\b", " amp "),
@@ -48,7 +48,7 @@ def normalize_product_text(value: str) -> str:
     value = re.sub(r"\b(?:نصف|نص|one\s+half|a\s+half|half)\b", " 0.5 ", value)
     value = re.sub(r"\b(?:ربع|one\s+quarter|a\s+quarter|quarter)\b", " 0.25 ", value)
     value = re.sub(
-        r"(?<![\d.])(\d+)\s*/\s*(\d+)\s*(?=(?:mcg|mg|g|ml|iu|ميكرو|ملي|ملغ|مغ|غرام|جرام|غم)\b)",
+        r"(?<![\d.])(\d+)\s*/\s*(\d+)\s*(?=(?:mcg|mg|g|ml|iu|ميكرو|ملي|ملغ|مغ|غرام|جرام|غم|غ)\b)",
         lambda match: f" {int(match.group(1)) / int(match.group(2)):g} ",
         value,
     )

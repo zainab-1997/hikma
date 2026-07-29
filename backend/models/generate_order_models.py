@@ -46,11 +46,17 @@ class GenerateOrderRequest(BaseModel):
     customer_name: str | None = None
     customer_type: CustomerType | None = None
     governorate: str | None = None
+    city: str | None = None
     area: str | None = None
     phone_number: str | None = None
     is_transit: bool = False
     primary_customer: str | None = None
     destination_customer: str | None = None
+    source_location: str | None = None
+    destination_location: str | None = None
+    destination_governorate: str | None = None
+    destination_city: str | None = None
+    destination_area: str | None = None
     source_message: str | None = None
     parser_confidence_score: float | None = Field(default=None, ge=0, le=1)
 
@@ -153,6 +159,7 @@ class GeneratedOrderResponse(BaseModel):
     success: bool = True
     order_id: str
     order_number: str
+    order_title: str | None = None
     filename: str
     download_url: str
     selected_price_type: ConfirmedPriceType

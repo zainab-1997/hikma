@@ -12,6 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 def get_approved_alias_row(written_product_name: str) -> int | None:
+    target = get_approved_alias_target(written_product_name)
+    return target[0] if target else None
+
+
+def get_approved_alias_target(written_product_name: str) -> tuple[int, str] | None:
     normalized = normalize_product_text(written_product_name)
     if not normalized:
         return None
@@ -21,7 +26,11 @@ def get_approved_alias_row(written_product_name: str) -> int | None:
         # Matching remains available if alias persistence is temporarily unavailable.
         logger.debug("Approved product alias lookup unavailable", exc_info=True)
         return None
-    return alias.catalog_row if alias is not None else None
+    return (
+        (alias.catalog_row, alias.official_product_name)
+        if alias is not None
+        else None
+    )
 
 
 def remember_approved_alias(

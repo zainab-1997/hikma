@@ -18,10 +18,35 @@ from excel.order_writer import (
     generate_order_workbook,
 )
 from models.generate_order_models import ExcelGenerationResult, GenerateOrderRequest
+from utils.route_format import build_order_title
 
 GENERATED_ORDERS_DIR = Path(get_settings().generated_orders_dir)
 
 _SAFE_GENERATED_FILENAME = re.compile(r"^[^\\/\x00-\x1f]+\.xlsx$")
+
+
+def standardize_order_request(
+    request: GenerateOrderRequest,
+) -> GenerateOrderRequest:
+    """Replace every client-supplied title with the canonical server-side title."""
+    if not request.is_transit:
+        customer = (request.customer_name or request.order_title).strip()
+        return request.model_copy(update={"order_title": build_order_title(
+            source_location=customer,
+            is_transit=False,
+            governorate=request.governorate,
+        )})
+    return request.model_copy(
+        update={
+            "order_title": build_order_title(
+                source_location=request.primary_customer,
+                is_transit=True,
+                destination_customer=request.destination_customer,
+                governorate=request.destination_governorate or request.governorate,
+                area=request.destination_area,
+            )
+        }
+    )
 
 
 def _validate_products_against_catalog(
@@ -85,6 +110,7 @@ def generate_excel_order(
 ) -> ExcelGenerationResult:
     """catalog/source_path/output_dir are overridable so tests never need the real,
     settings-configured Hikma template or the real generated_orders directory."""
+    request = standardize_order_request(request)
     if not request.required_confirmations_resolved:
         raise ExcelGenerationError(
             "This order still has unresolved business-rule confirmations. Resolve them before generating."
@@ -101,9 +127,9 @@ def generate_excel_order(
     output_dir = output_dir if output_dir is not None else GENERATED_ORDERS_DIR
     output_dir.mkdir(parents=True, exist_ok=True)
     filename_customer = (
-        request.customer_name
-        or request.destination_customer
-        or request.order_title
+        request.order_title
+        if request.is_transit
+        else request.customer_name or request.destination_customer or request.order_title
     )
     filename, output_path = _reserve_unique_output_path(
         filename_customer, output_dir, filename_date

@@ -34,6 +34,20 @@ def _mock_ai_response(customer_name: str, written_name: str, mistaken_quantity: 
     return sdk
 
 
+def test_parse_rules_match_pipeline_preserves_english_governorate():
+    parsed, reviewed, matched = _run_pipeline(
+        "Al Shifa Pharmacy\nBaghdad\nVanco 500mg qty 20",
+        "Al Shifa Pharmacy",
+        "Vanco",
+        500,
+    )
+    assert parsed["customer"]["governorate"] == "Baghdad"
+    assert reviewed["customer"]["governorate"] == "Baghdad"
+    assert matched["customer"]["governorate"] == "Baghdad"
+    assert reviewed["order_title"] == "Al Shifa Pharmacy - Baghdad"
+    assert matched["order_title"] == reviewed["order_title"]
+
+
 def _run_pipeline(message, customer_name, written_name, mistaken_quantity):
     settings = Settings(
         _env_file=None,
@@ -280,6 +294,48 @@ def test_equals_quantity_style_applies_to_every_real_catalog_product():
         assert reviewed["products"][0]["quantity"] == 100
         assert matched["products"][0]["quantity"] == 100
         assert matched["products"][0]["matched_row"] == catalog_product.row
+
+
+@pytest.mark.parametrize(
+    ("product_line", "written_name", "expected_quantity"),
+    [
+        ("فانكو ٥٠٠ ملغ", "فانكو", None),
+        ("فانكو ٥٠٠ ملغم", "فانكو", None),
+        ("ڤانكو ٥٠٠ مغ", "ڤانكو", None),
+        ("فانكو ٠.٥ غرام", "فانكو", None),
+        ("فانكو ٥٠٠ ملغ = ١٠٠", "فانكو", 100),
+        ("vanco 0.5", "vanco", None),
+        ("vanco 0.5g", "vanco", None),
+        ("vanco 500mg", "vanco", None),
+        ("vanco 500 mg = 100", "vanco", 100),
+        ("فانكو 500mg", "فانكو", None),
+        ("vanco ٥٠٠ ملغ", "vanco", None),
+        ("ڤانكو 0.5g", "ڤانكو", None),
+    ],
+)
+def test_real_frontend_routes_auto_select_all_equivalent_500mg_variants(
+    product_line, written_name, expected_quantity
+):
+    arabic_customer = any("\u0600" <= character <= "\u06ff" for character in product_line)
+    customer_name = "صيدلية الاختبار" if arabic_customer else "Test Pharmacy"
+    parsed, reviewed, matched = _run_pipeline(
+        f"{customer_name}\n{product_line}",
+        customer_name,
+        written_name,
+        None,
+    )
+
+    assert parsed["products"][0]["strength"] == "500 mg"
+    assert parsed["products"][0]["quantity"] == expected_quantity
+    assert reviewed["products"][0]["strength"] == "500 mg"
+    product = matched["products"][0]
+    assert product["match_status"] == "matched"
+    assert product["matched_row"] == 14
+    assert product["matched_official_name"] == "VANCO 500MG IV INFU VIALS 1's"
+    assert [candidate["row"] for candidate in product["candidates"]] == [14]
+    assert matched["all_products_matched"] is True
+    assert matched["products_require_matching"] is False
+    assert product["quantity"] == expected_quantity
 
 
 @pytest.mark.parametrize(

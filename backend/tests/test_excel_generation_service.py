@@ -190,6 +190,28 @@ def test_generated_filename_is_readable_customer_name_and_date(tmp_path):
     assert response.filename == "صيدلية_النخبة_2026-07-26.xlsx"
 
 
+def test_transit_title_is_standardized_in_workbook_and_filename(tmp_path):
+    output_dir = tmp_path / "out"
+    response = generate_excel_order(
+        _request(
+            order_title="untrusted - Transit - title",
+            customer_name="مذخر ساوا",
+            is_transit=True,
+            primary_customer="مذخر ساوا",
+            destination_customer="مستشفى الكوثر",
+        ),
+        catalog=CATALOG,
+        source_path=_build_template_workbook(tmp_path),
+        output_dir=output_dir,
+        filename_date=date(2026, 7, 26),
+    )
+
+    expected = "مذخر ساوا - ترانزيت - مستشفى الكوثر"
+    assert response.filename == "مذخر_ساوا_ترانزيت_مستشفى_الكوثر_2026-07-26.xlsx"
+    workbook = openpyxl.load_workbook(output_dir / response.filename, data_only=False)
+    assert workbook.active["A1"].value == expected
+
+
 def test_filename_collisions_use_incrementing_suffixes(tmp_path):
     output_dir = tmp_path / "out"
     source = _build_template_workbook(tmp_path)

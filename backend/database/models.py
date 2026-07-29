@@ -35,6 +35,7 @@ class Order(Base):
     customer_name: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     customer_type: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     governorate: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    city: Mapped[str | None] = mapped_column(String(128), nullable=True)
     area: Mapped[str | None] = mapped_column(String(128), nullable=True)
     phone_number: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
@@ -42,6 +43,11 @@ class Order(Base):
     is_transit: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     primary_customer: Mapped[str | None] = mapped_column(String(255), nullable=True)
     destination_customer: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source_location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    destination_location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    destination_governorate: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    destination_city: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    destination_area: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     selected_price_type: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
     selected_order_total: Mapped[int] = mapped_column(Integer, nullable=False)

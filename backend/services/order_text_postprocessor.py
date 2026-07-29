@@ -13,6 +13,7 @@ from models.order_models import ParsedOrderResponse
 from services.business_rules_service import classify_customer_type_from_name
 from services.product_matching_service import _profile, _rank_scored_products
 from utils.text_normalize import normalize_product_text
+from utils.location_normalize import extract_iraqi_location, normalize_governorate
 
 _ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ _QUANTITY_MARKER = re.compile(
     re.IGNORECASE,
 )
 _PHARMACEUTICAL_UNIT = (
-    r"mcg|mg|g|ml|iu|units?|مكغ|ميكروغرام|ملغم|مليغرام|مغ|غرام|غم|مل|ملل|وحدة"
+    r"mcg|mg|g|ml|iu|units?|مكغ|ميكرو\s*غرام|ملغم|ملغ|ملي\s*غرام|مغ|غرام|جرام|غم|غ|مل|ملل|وحدة"
 )
 _EQUAL_QUANTITY = re.compile(
     rf"=\s*([٠-٩۰-۹\d]+)(?!\s*(?:{_PHARMACEUTICAL_UNIT})\b)\s*$",
@@ -108,6 +109,9 @@ def _display_concentration(profile) -> str | None:
 
 def postprocess_parsed_order(message: str, parsed: ParsedOrderResponse) -> ParsedOrderResponse:
     customer = parsed.customer.model_copy()
+    extracted_governorate, extracted_city = extract_iraqi_location(message)
+    customer.governorate = normalize_governorate(customer.governorate) or extracted_governorate
+    customer.city = customer.city or extracted_city
     classified = classify_customer_type_from_name(customer.customer_name)
     if classified != "unknown":
         customer.customer_type = classified
@@ -183,4 +187,28 @@ def postprocess_parsed_order(message: str, parsed: ParsedOrderResponse) -> Parse
             )
         )
 
-    return parsed.model_copy(update={"customer": customer, "products": products})
+    transit = parsed.transit.model_copy()
+    if transit.is_transit:
+        transit.destination_governorate = (
+            normalize_governorate(transit.destination_governorate)
+            or customer.governorate
+            or extracted_governorate
+        )
+        transit.destination_city = transit.destination_city or customer.city or extracted_city
+        transit.destination_area = transit.destination_area or customer.area
+        customer.governorate = transit.destination_governorate
+        customer.city = transit.destination_city
+        customer.area = transit.destination_area or customer.area
+
+    logger.debug(
+        "Location parse trace raw_message=%r governorate=%r city=%r area=%r "
+        "source_customer=%r destination_customer=%r destination_governorate=%r",
+        message,
+        customer.governorate,
+        customer.city,
+        customer.area,
+        transit.primary_customer,
+        transit.destination_customer,
+        transit.destination_governorate,
+    )
+    return parsed.model_copy(update={"customer": customer, "transit": transit, "products": products})

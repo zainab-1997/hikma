@@ -16,6 +16,8 @@ from models.review_order_models import (
     RuleConfirmation,
     RuleWarning,
 )
+from utils.location_normalize import normalize_governorate
+from utils.route_format import build_order_title
 
 _PRICE_TYPE_BY_CUSTOMER_TYPE: dict[CustomerType, tuple[PriceType, bool]] = {
     "pharmacy": ("pharmacy", False),
@@ -177,15 +179,20 @@ def _build_order_title(transit: TransitData, customer_name: str | None, governor
     if transit.is_transit:
         primary = transit.primary_customer or "Unknown"
         destination = transit.destination_customer or "Unknown"
-        title = f"{primary} - Transit - {destination}"
-        if governorate:
-            title = f"{title} - {governorate}"
-        return title
+        return build_order_title(
+            source_location=primary,
+            is_transit=True,
+            destination_customer=destination,
+            governorate=transit.destination_governorate or governorate,
+            area=transit.destination_area,
+        )
 
     name = customer_name or "Unknown Customer"
-    if governorate:
-        return f"{name} - {governorate}"
-    return name
+    return build_order_title(
+        source_location=name,
+        is_transit=False,
+        governorate=governorate,
+    )
 
 
 def _process_products(
@@ -328,6 +335,7 @@ def apply_business_rules(request: ApplyRulesRequest) -> ReviewOrderResponse:
     missing_information: list[str] = []
 
     customer = request.customer.model_copy()
+    customer.governorate = normalize_governorate(customer.governorate)
     transit = request.transit.model_copy()
     ambiguous_transit = False
 
@@ -340,7 +348,18 @@ def apply_business_rules(request: ApplyRulesRequest) -> ReviewOrderResponse:
             primary_customer=primary_customer,
             destination_customer=destination_customer,
             destination_type=destination_type,
+            source_location=transit.source_location,
+            destination_location=transit.destination_location,
+            destination_governorate=(
+                normalize_governorate(transit.destination_governorate)
+                or customer.governorate
+            ),
+            destination_city=transit.destination_city or customer.city,
+            destination_area=transit.destination_area or customer.area,
         )
+        customer.governorate = transit.destination_governorate
+        customer.city = transit.destination_city
+        customer.area = transit.destination_area or customer.area
 
         if not primary_customer:
             _add_missing(missing_information, "primary_customer")

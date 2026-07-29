@@ -15,6 +15,7 @@ from email.message import EmailMessage
 from email.utils import formataddr
 
 from services.email_errors import EmailContentError
+from utils.route_format import build_order_title
 
 _HEADER_INJECTION_PATTERN = re.compile(r"[\r\n]")
 MAX_MESSAGE_LENGTH = 2000
@@ -35,18 +36,40 @@ def _format_price_type(price_type: str) -> str:
     return "Unknown"
 
 
+def _display_order_title(order) -> str:
+    is_transit = getattr(order, "is_transit", False)
+    return build_order_title(
+        source_location=(
+            getattr(order, "primary_customer", None)
+            if is_transit
+            else getattr(order, "customer_name", None) or order.order_title
+        ),
+        is_transit=is_transit,
+        destination_customer=getattr(order, "destination_customer", None),
+        governorate=(
+            getattr(order, "destination_governorate", None)
+            or getattr(order, "governorate", None)
+        ),
+        area=getattr(order, "destination_area", None),
+    )
+
+
 def build_subject(order, override: str | None) -> str:
     if override and override.strip():
         subject = reject_header_injection(override.strip(), "subject")
         return subject[:MAX_SUBJECT_LENGTH]
-    label = order.customer_name or order.order_title
+    label = (
+        _display_order_title(order)
+        if getattr(order, "is_transit", False)
+        else order.customer_name or order.order_title
+    )
     return f"Hikma Order {order.order_number} - {label}"[:MAX_SUBJECT_LENGTH]
 
 
 def _summary_rows(order) -> list[tuple[str, str]]:
     rows = [
         ("Order Number", order.order_number),
-        ("Customer/Order Title", order.order_title),
+        ("Customer/Order Title", _display_order_title(order)),
     ]
     if order.governorate:
         rows.append(("Governorate", order.governorate))

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import EmailOrderPanel from './EmailOrderPanel'
 import AppIcon from './ui/AppIcon'
 import { resolveApiUrl } from '../services/api'
-import { buildCompactCompletionRows } from '../utils/completionReview'
+import { buildCompactCompletionRows, buildGeneratedOrderReview } from '../utils/completionReview'
 
 function formatPriceType(priceType) {
   if (priceType === 'pharmacy') return 'Pharmacy Price'
@@ -75,13 +75,70 @@ function PreviewModal({ generatedOrder, onClose }) {
   </div>
 }
 
-function GeneratedOrderReview({ generatedOrder, onNewOrder }) {
+function OrderItemsTable({ items }) {
+  return <section className="generated-review-section">
+    <h3>Order Items</h3>
+    <div className="generated-items-scroll">
+      <table className="generated-items-table">
+        <thead><tr><th>Product</th><th>Quantity</th><th>Bonus</th><th>Match Status</th></tr></thead>
+        <tbody>{items.map((item, index) => <tr key={`${item.product}-${index}`}>
+          <td dir="auto"><strong>{item.product}</strong></td>
+          <td>{item.quantity.toLocaleString()}</td>
+          <td>{item.bonus ? item.bonus.toLocaleString() : '—'}</td>
+          <td><span className={`generated-match-status generated-match-status--${item.statusKey}`}>
+            {item.status}
+          </span></td>
+        </tr>)}</tbody>
+      </table>
+    </div>
+  </section>
+}
+
+function CompactOrderSummary({ totals }) {
+  return <section className="generated-review-section">
+    <h3>Order Summary</h3>
+    <dl className="generated-summary-grid">
+      <div><dt>Products</dt><dd>{totals.products}</dd></div>
+      <div><dt>Total Quantity</dt><dd>{totals.quantity.toLocaleString()}</dd></div>
+      <div><dt>Total Bonus</dt><dd>{totals.bonus.toLocaleString()}</dd></div>
+      <div><dt>Order Total</dt><dd>{totals.orderTotal.toLocaleString()} IQD</dd></div>
+    </dl>
+  </section>
+}
+
+function MatchStatistics({ counts }) {
+  const rows = [
+    ['Automatically Matched', counts.automatic],
+    ['Manually Selected', counts.manual],
+    ['Unmatched', counts.unmatched],
+    ...(counts.strengthConflict ? [['Strength Conflicts', counts.strengthConflict]] : []),
+    ...(counts.ambiguous ? [['Ambiguous Matches', counts.ambiguous]] : []),
+  ]
+  return <section className="generated-review-section generated-processing-review">
+    <h3>Processing Review</h3>
+    <dl>{rows.map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}</dl>
+  </section>
+}
+
+function GeneratedOrderReview({
+  generatedOrder,
+  reviewResult,
+  matchResult,
+  approvedSelections,
+  onNewOrder,
+}) {
   const [showPreview, setShowPreview] = useState(false)
-  if (!generatedOrder.workbook_preview) return null
   const completionRows = buildCompactCompletionRows(
     generatedOrder,
     formatPriceType(generatedOrder.selected_price_type),
   )
+  const review = buildGeneratedOrderReview({
+    generatedOrder,
+    reviewResult,
+    matchResult,
+    approvedSelections,
+  })
+  if (!generatedOrder.workbook_preview) return null
 
   return <>
     <section className="generated-order-success" aria-live="polite">
@@ -91,10 +148,21 @@ function GeneratedOrderReview({ generatedOrder, onNewOrder }) {
         <h2>Order generated successfully</h2>
         <p>The approved workbook is ready to preview, download, or send by email.</p>
         <dl className="generated-order__details">
+          {review.customerName && <div className="generated-order__row">
+            <dt>Customer Name</dt><dd dir="auto">{review.customerName}</dd>
+          </div>}
+          {review.area && <div className="generated-order__row">
+            <dt>Area / City</dt><dd dir="auto">{review.area}</dd>
+          </div>}
           {completionRows.map(([name, value]) => <div className="generated-order__row" key={name}>
-            <dt>{name}</dt><dd dir={name === 'Filename' ? 'auto' : undefined}>{value}</dd>
+            <dt>{name}</dt><dd dir={['Filename', 'Order Title'].includes(name) ? 'auto' : undefined}>{value}</dd>
           </div>)}
         </dl>
+        <OrderItemsTable items={review.items} />
+        <div className="generated-review-footer-grid">
+          <CompactOrderSummary totals={review.totals} />
+          <MatchStatistics counts={review.statusCounts} />
+        </div>
         <div className="generated-order-success__actions">
           <button type="button" className="btn btn--secondary" onClick={() => setShowPreview(true)}>
             Preview Excel

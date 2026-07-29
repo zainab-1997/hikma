@@ -17,6 +17,7 @@ needing a process restart.
 
 import os
 import re
+import hashlib
 from dataclasses import dataclass
 
 import openpyxl
@@ -105,7 +106,7 @@ def _read_catalog_products(template_path: str) -> list[CatalogProduct]:
         workbook.close()
 
 
-_catalog_cache: dict[tuple[str, float], tuple[CatalogProduct, ...]] = {}
+_catalog_cache: dict[tuple[str, int, int], tuple[CatalogProduct, ...]] = {}
 
 
 def get_catalog_products(template_path: str | None = None) -> tuple[CatalogProduct, ...]:
@@ -117,16 +118,22 @@ def get_catalog_products(template_path: str | None = None) -> tuple[CatalogProdu
     path = template_path if template_path is not None else get_settings().excel_template_path
 
     try:
-        mtime = os.path.getmtime(path)
+        stat = os.stat(path)
     except OSError as exc:
         raise CatalogUnavailableError("The product catalog file could not be found.") from exc
 
-    cache_key = (path, mtime)
+    canonical_path = os.path.realpath(path)
+    cache_key = (canonical_path, stat.st_mtime_ns, stat.st_size)
     if cache_key not in _catalog_cache:
         _catalog_cache.clear()
-        _catalog_cache[cache_key] = tuple(_read_catalog_products(path))
+        _catalog_cache[cache_key] = tuple(_read_catalog_products(canonical_path))
 
     return _catalog_cache[cache_key]
+
+
+def catalog_version(catalog: tuple[CatalogProduct, ...]) -> str:
+    payload = "\n".join(f"{item.row}:{item.official_name}" for item in catalog)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def clear_catalog_cache() -> None:

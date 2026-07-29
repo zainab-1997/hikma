@@ -8,9 +8,12 @@ from pydantic import BaseModel
 class OrderSummary(BaseModel):
     order_id: str
     order_number: str
+    order_title: str | None = None
+    is_transit: bool = False
     customer_name: str | None
     customer_type: str | None
     governorate: str | None
+    city: str | None = None
     selected_price_type: str
     selected_order_total: int
     created_at: datetime
@@ -44,12 +47,18 @@ class OrderDetail(BaseModel):
     customer_name: str | None
     customer_type: str | None
     governorate: str | None
+    city: str | None = None
     area: str | None
     phone_number: str | None
     order_title: str
     is_transit: bool
     primary_customer: str | None
     destination_customer: str | None
+    source_location: str | None = None
+    destination_location: str | None = None
+    destination_governorate: str | None = None
+    destination_city: str | None = None
+    destination_area: str | None = None
     selected_price_type: str
     selected_order_total: int
     generated_filename: str

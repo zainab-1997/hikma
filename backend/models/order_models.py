@@ -22,6 +22,7 @@ class CustomerData(BaseModel):
     customer_name: str | None = None
     customer_type: CustomerType = "unknown"
     governorate: str | None = None
+    city: str | None = None
     area: str | None = None
     phone_number: str | None = None
 
@@ -31,6 +32,11 @@ class TransitData(BaseModel):
     primary_customer: str | None = None
     destination_customer: str | None = None
     destination_type: CustomerType = "unknown"
+    source_location: str | None = None
+    destination_location: str | None = None
+    destination_governorate: str | None = None
+    destination_city: str | None = None
+    destination_area: str | None = None
 
 
 class ProductData(BaseModel):

@@ -26,6 +26,9 @@ class FakeOrder:
     selected_order_total: int = 562870
     generated_filename: str = "order.xlsx"
     created_at: datetime = datetime(2026, 7, 25, 9, 28, 15, tzinfo=timezone.utc)
+    is_transit: bool = False
+    primary_customer: str | None = None
+    destination_customer: str | None = None
 
 
 def test_subject_default_uses_order_number_and_customer():
@@ -36,6 +39,19 @@ def test_subject_default_uses_order_number_and_customer():
 def test_subject_override_is_used_when_provided():
     subject = build_subject(FakeOrder(), "Custom Subject")
     assert subject == "Custom Subject"
+
+
+def test_transit_email_uses_the_canonical_route_title():
+    order = FakeOrder(
+        order_title="stale - Transit - title",
+        customer_name="مذخر ساوا",
+        is_transit=True,
+        primary_customer="مذخر ساوا",
+        destination_customer="مستشفى الكوثر",
+    )
+    expected = "مذخر ساوا - ترانزيت - مستشفى الكوثر - النجف"
+    assert build_subject(order, None).endswith(expected)
+    assert expected in build_plain_text_body(order, None)
 
 
 def test_subject_override_rejects_header_injection():

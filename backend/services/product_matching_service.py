@@ -10,12 +10,12 @@ import re
 from dataclasses import dataclass, replace
 from difflib import SequenceMatcher
 
-from excel.catalog_reader import CatalogProduct, get_catalog_products
+from excel.catalog_reader import CatalogProduct, catalog_version, get_catalog_products
 from models.matched_order_models import MatchedOrderResponse, MatchedProductData, ProductMatchCandidate
 from models.order_models import ProductData
 from models.review_order_models import ReviewOrderResponse
-from services.product_alias_service import load_alias_index
-from services.approved_product_alias_service import get_approved_alias_row
+from services.product_alias_service import get_alias_index
+from services.approved_product_alias_service import get_approved_alias_target
 from utils.text_normalize import normalize_product_text as _normalize
 
 EXACT_SCORE = 1.0
@@ -57,9 +57,6 @@ _NON_NAME_TOKENS = _FORMS | {
     "x", "qty", "quantity", "box", "boxes", "pack", "packs", "units",
     "عدد", "كمية", "حبة", "علبة", "كارتون", "اكس",
 }
-
-_ALIAS_INDEX = load_alias_index()
-
 
 class InvalidProductSelectionError(Exception):
     """Raised when a manual selection does not match the live catalog."""
@@ -404,8 +401,9 @@ def _form_attribute_score(
 
 
 def _apply_brand_aliases(normalized: str) -> str:
+    alias_index = get_alias_index()
     result = normalized
-    for written, replacement in sorted(_ALIAS_INDEX.brand.items(), key=lambda item: -len(item[0])):
+    for written, replacement in sorted(alias_index.brand.items(), key=lambda item: -len(item[0])):
         result = re.sub(rf"(?<!\w){re.escape(written)}(?!\w)", replacement, result)
     return result
 
@@ -489,7 +487,7 @@ def _score_product(
 def _exact_alias_candidate(
     normalized: str, catalog: tuple[CatalogProduct, ...]
 ) -> ProductMatchCandidate | None:
-    row = _ALIAS_INDEX.exact.get(normalized)
+    row = get_alias_index().exact.get(normalized)
     if row is None:
         return None
     product = next((item for item in catalog if item.row == row), None)
@@ -516,11 +514,12 @@ def _approved_alias_candidate(
     written_product_name: str, catalog: tuple[CatalogProduct, ...]
 ) -> ProductMatchCandidate | None:
     """Use a learned selection only when its pharmaceutical attributes still agree."""
-    row = get_approved_alias_row(written_product_name)
-    if row is None:
+    target = get_approved_alias_target(written_product_name)
+    if target is None:
         return None
+    row, saved_official_name = target
     product = next((item for item in catalog if item.row == row), None)
-    if product is None:
+    if product is None or _normalize(product.official_name) != _normalize(saved_official_name):
         return None
     written = _profile(written_product_name)
     scored = _score_product(written, product, name_score=EXACT_SCORE)
@@ -750,6 +749,12 @@ def match_products(
     products: list[ProductData], catalog: tuple[CatalogProduct, ...] | None = None
 ) -> list[MatchedProductData]:
     catalog = catalog if catalog is not None else get_catalog_products()
+    logger.debug(
+        "Product matching request catalog_version=%s product_count=%s inputs=%r",
+        catalog_version(catalog),
+        len(catalog),
+        [product.written_product_name for product in products],
+    )
     matched: list[MatchedProductData] = []
     for product in products:
         status, official_name, row, score, candidates = match_single_product(

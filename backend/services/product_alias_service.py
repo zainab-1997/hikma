@@ -60,3 +60,20 @@ def load_alias_index(path: Path | str = DEFAULT_ALIASES_PATH) -> AliasIndex:
             brand[normalize_product_text(written)] = normalize_product_text(brand_text)
 
     return AliasIndex(exact=exact, brand=brand)
+
+
+_alias_cache: tuple[Path, int, int, AliasIndex] | None = None
+
+
+def get_alias_index(path: Path | str = DEFAULT_ALIASES_PATH) -> AliasIndex:
+    """Return one deterministic alias index and refresh it after an on-disk change."""
+    global _alias_cache
+    resolved = Path(path).resolve()
+    try:
+        stat = resolved.stat()
+    except OSError:
+        return AliasIndex()
+    identity = (resolved, stat.st_mtime_ns, stat.st_size)
+    if _alias_cache is None or _alias_cache[:3] != identity:
+        _alias_cache = (*identity, load_alias_index(resolved))
+    return _alias_cache[3]
