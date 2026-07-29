@@ -30,6 +30,7 @@ _TERM_REPLACEMENTS = (
 
 def normalize_product_text(value: str) -> str:
     value = unicodedata.normalize("NFKC", value or "")
+    value = value.replace("×", " x ")
     value = value.translate(_ARABIC_INDIC_DIGITS).translate(_EASTERN_ARABIC_DIGITS)
     value = value.replace("٫", ".").replace("٬", "")
     value = (

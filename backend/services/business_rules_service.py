@@ -6,6 +6,7 @@ this layer makes the company's pricing, title, and validation decisions.
 
 import math
 import re
+import unicodedata
 
 from models.order_models import CustomerType, ProductData, TransitData
 from models.review_order_models import (
@@ -20,7 +21,7 @@ _PRICE_TYPE_BY_CUSTOMER_TYPE: dict[CustomerType, tuple[PriceType, bool]] = {
     "pharmacy": ("pharmacy", False),
     "hospital": ("pharmacy", False),
     "drug_store": ("drug_store", False),
-    "office": ("unknown", True),
+    "office": ("drug_store", False),
     "unknown": ("unknown", True),
 }
 
@@ -35,19 +36,45 @@ _OPTIONAL_FIELD_LABELS = {
 
 
 def classify_customer_type_from_name(name: str | None) -> CustomerType:
-    """Classify a customer name using the same name-prefix rules given to the AI parser."""
+    """Classify clear Arabic/English customer terms; conflicts remain unknown."""
     if not name:
         return "unknown"
 
-    stripped = name.strip()
-    if stripped.startswith("صيدلية"):
+    normalized = unicodedata.normalize("NFKC", name).lower()
+    normalized = re.sub(r"[\u064b-\u065f\u0670\u06d6-\u06edـ]", "", normalized)
+    normalized = normalized.translate(
+        str.maketrans(
+            {"أ": "ا", "إ": "ا", "آ": "ا", "ى": "ي", "ؤ": "و", "ئ": "ي", "ة": "ه"}
+        )
+    )
+    normalized = re.sub(r"[^a-z0-9\u0600-\u06ff]+", " ", normalized)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+
+    pharmacy = bool(
+        re.search(r"(?:^|\s)(?:صيدليه|مستشفي|pharmacy|hospital)(?:\s|$)", normalized)
+    )
+    office = bool(
+        re.search(r"(?:^|\s)مكتب(?:\s|$)", normalized)
+        or "scientific office" in normalized
+    )
+    drug_store = bool(
+        re.search(r"(?:^|\s)مذخر(?:\s|$)", normalized)
+        or "مخزن ادويه" in normalized
+        or "drug store" in normalized
+        or "drugstore" in normalized
+        or "warehouse" in normalized
+        or office
+    )
+    if pharmacy and drug_store:
+        return "unknown"
+    if pharmacy:
+        if re.search(r"(?:^|\s)(?:مستشفي|hospital)(?:\s|$)", normalized):
+            return "hospital"
         return "pharmacy"
-    if stripped.startswith("مستشفى"):
-        return "hospital"
-    if stripped.startswith("مذخر"):
-        return "drug_store"
-    if stripped.startswith("مكتب"):
+    if office:
         return "office"
+    if drug_store:
+        return "drug_store"
     return "unknown"
 
 
@@ -196,7 +223,7 @@ def _process_products(
                 )
             )
 
-        if product.quantity <= 0:
+        if product.quantity is None or product.quantity <= 0:
             _add_missing(missing_information, "quantity")
             details = {"product_name": name or None, "quantity": product.quantity}
             blocking_errors.append(
@@ -217,7 +244,10 @@ def _process_products(
         resolved_free_quantity = product.free_quantity
 
         if product.free_percentage is not None:
-            exact_free_quantity = product.quantity * product.free_percentage / 100
+            if product.quantity is None:
+                exact_free_quantity = 0
+            else:
+                exact_free_quantity = product.quantity * product.free_percentage / 100
             rounded_free_quantity = round(exact_free_quantity)
 
             if math.isclose(exact_free_quantity, rounded_free_quantity, rel_tol=0, abs_tol=1e-9):
@@ -254,6 +284,10 @@ def _process_products(
         resolved_products.append(
             ProductData(
                 written_product_name=product.written_product_name,
+                strength=product.strength,
+                concentration=product.concentration,
+                dosage_form=product.dosage_form,
+                package_size=product.package_size,
                 quantity=product.quantity,
                 free_quantity=resolved_free_quantity,
                 free_percentage=product.free_percentage,
@@ -362,6 +396,9 @@ def apply_business_rules(request: ApplyRulesRequest) -> ReviewOrderResponse:
                     details={"field": "customer_name"},
                 )
             )
+        classified_type = classify_customer_type_from_name(customer.customer_name)
+        if classified_type != "unknown":
+            customer.customer_type = classified_type
         price_type, price_type_requires_confirmation = _PRICE_TYPE_BY_CUSTOMER_TYPE[customer.customer_type]
 
     if price_type_requires_confirmation and not ambiguous_transit:

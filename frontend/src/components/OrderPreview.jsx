@@ -1,7 +1,5 @@
-import EmailOrderPanel from './EmailOrderPanel'
+import GeneratedOrderReview from './GeneratedOrderReview'
 import ProductMatchCard from './ProductMatchCard'
-import AppIcon from './ui/AppIcon'
-import { resolveApiUrl } from '../services/api'
 
 const CUSTOMER_TYPE_OPTIONS = ['pharmacy', 'hospital', 'drug_store', 'office', 'unknown']
 
@@ -173,33 +171,7 @@ function OrderPreview({
         </button>
       </section>
 
-      {generatedOrder && <>
-        <section className="generated-order-success" aria-live="polite">
-          <div className="generated-order-success__icon"><AppIcon name="success" size={30} /></div>
-          <div className="generated-order-success__body">
-            <span className="generated-order__saved">Generated and saved</span>
-            <h2>Order generated successfully</h2>
-            <p>The approved company workbook is ready to download or send by email.</p>
-            <dl className="generated-order__details">
-              <div className="generated-order__row"><dt>Order Number</dt><dd>{generatedOrder.order_number}</dd></div>
-              <div className="generated-order__row"><dt>Filename</dt><dd dir="auto">{generatedOrder.filename}</dd></div>
-              <div className="generated-order__row"><dt>Selected Price Type</dt><dd>{formatPriceType(generatedOrder.selected_price_type)}</dd></div>
-              <div className="generated-order__row"><dt>Order Total</dt><dd>{generatedOrder.selected_order_total.toLocaleString()} IQD</dd></div>
-            </dl>
-            {generatedOrder.excluded_order_notes && <p className="generated-order__note">
-              Order notes were not written to the workbook because the template has no designated note cell.
-            </p>}
-            <div className="generated-order-success__actions">
-              <a className="btn btn--primary" href={resolveApiUrl(generatedOrder.download_url)} download={generatedOrder.filename}>
-                <AppIcon name="download" size={17} /> Download Excel
-              </a>
-              <button type="button" className="btn btn--secondary" onClick={onNewOrder}>Process New Order</button>
-            </div>
-          </div>
-        </section>
-        <EmailOrderPanel orderId={generatedOrder.order_id} orderNumber={generatedOrder.order_number}
-          generatedFilename={generatedOrder.filename} />
-      </>}
+      {generatedOrder && <GeneratedOrderReview generatedOrder={generatedOrder} onNewOrder={onNewOrder} />}
     </div>
   )
 }

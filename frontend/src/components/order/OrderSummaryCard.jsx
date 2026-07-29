@@ -16,7 +16,7 @@ function OrderSummaryCard({ reviewResult, matchResult, approvedSelections }) {
     )
   }
 
-  const totalQuantity = matchResult.products.reduce((sum, product) => sum + product.quantity, 0)
+  const totalQuantity = matchResult.products.reduce((sum, product) => sum + (product.quantity || 0), 0)
   const totalFree = matchResult.products.reduce((sum, product) => sum + product.free_quantity, 0)
   const unresolved = matchResult.products.filter(
     (product, index) => product.match_status !== 'matched' && !approvedSelections[index],

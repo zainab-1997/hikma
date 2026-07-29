@@ -28,6 +28,7 @@ function App() {
   // user edits fields), so it's a ref rather than state.
   const originalParsedOrderRef = useRef(null) // untouched /parse output
   const generationAttemptRef = useRef({ fingerprint: null, requestId: null, inFlight: false })
+  const validationRequestRef = useRef(0)
   const [editableOrder, setEditableOrder] = useState(null) // user-editable structured order sent to apply-rules / match-products
   const [reviewResult, setReviewResult] = useState(null) // business-rules output
   const [matchResult, setMatchResult] = useState(null) // product-matching output
@@ -121,14 +122,38 @@ function App() {
     setEditableOrder((prev) => prev && { ...prev, transit: { ...prev.transit, [field]: value } })
   }
 
-  const handleProductFieldChange = (index, field, value) => {
-    setEditableOrder((prev) => {
-      if (!prev) return prev
-      const products = prev.products.map((product, i) =>
-        i === index ? { ...product, [field]: value } : product,
-      )
-      return { ...prev, products }
-    })
+  const handleProductFieldChange = async (index, field, value) => {
+    if (!editableOrder) return
+    const products = editableOrder.products.map((product, i) =>
+      i === index ? { ...product, [field]: value } : product,
+    )
+    const nextOrder = { ...editableOrder, products }
+    setEditableOrder(nextOrder)
+    setGeneratedOrder(null)
+
+    const requestNumber = validationRequestRef.current + 1
+    validationRequestRef.current = requestNumber
+    setIsReapplying(true)
+    try {
+      const review = await applyBusinessRules({
+        ...nextOrder,
+        price_type_override: priceTypeOverride,
+      })
+      const matched = await matchProducts(review)
+      if (validationRequestRef.current === requestNumber) {
+        setReviewResult(review)
+        setMatchResult(matched)
+        setStatus({ type: '', message: '' })
+      }
+    } catch (error) {
+      if (validationRequestRef.current === requestNumber) {
+        setStatus({ type: 'error', message: describeError(error) })
+      }
+    } finally {
+      if (validationRequestRef.current === requestNumber) {
+        setIsReapplying(false)
+      }
+    }
   }
 
   const handleApproveSelection = async (index, candidate) => {
@@ -136,7 +161,11 @@ function App() {
     setApprovingIndex(index)
 
     try {
-      const validated = await selectProduct(candidate.row, candidate.official_name)
+      const validated = await selectProduct(
+        candidate.row,
+        candidate.official_name,
+        matchResult?.products[index]?.written_product_name,
+      )
       setApprovedSelections((prev) => ({ ...prev, [index]: validated }))
     } catch (error) {
       setApprovalErrors((prev) => ({ ...prev, [index]: describeError(error) }))
@@ -187,7 +216,7 @@ function App() {
         free_quantity: product.free_quantity,
         free_percentage: product.free_percentage ?? null,
         notes: product.notes || null,
-        match_status: approved ? 'matched' : product.match_status,
+        match_status: approved ? 'manual' : product.match_status,
         match_score: approved ? approved.score : product.match_score,
       }
     })

@@ -98,6 +98,26 @@ class OrderProduct(Base):
     order: Mapped["Order"] = relationship("Order", back_populates="products")
 
 
+class ApprovedProductAlias(Base):
+    """A user-approved spelling mapped to an immutable catalog row/name pair."""
+
+    __tablename__ = "approved_product_aliases"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_id)
+    normalized_alias: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False, index=True
+    )
+    written_alias: Mapped[str] = mapped_column(String(255), nullable=False)
+    catalog_row: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    official_product_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+    )
+
+
 class EmailDelivery(Base):
     """One attempt to email a saved, already-generated order.
 

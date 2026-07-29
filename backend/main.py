@@ -1,7 +1,9 @@
 """FastAPI application entrypoint and deployment middleware."""
 
 import logging
+import os
 import re
+import sys
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -37,7 +39,18 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI):
         validate_startup(settings)
         init_db(settings.database_url)
-        logger.info("application started", extra={"request_id": "startup"})
+        import services.product_matching_service as product_matching_service
+        import utils.text_normalize as text_normalize
+
+        logger.info(
+            "application started python=%s cwd=%s pid=%s text_normalize=%s matcher=%s",
+            sys.executable,
+            os.getcwd(),
+            os.getpid(),
+            text_normalize.__file__,
+            product_matching_service.__file__,
+            extra={"request_id": "startup"},
+        )
         yield
 
     application = FastAPI(

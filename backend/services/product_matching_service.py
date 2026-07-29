@@ -15,6 +15,7 @@ from models.matched_order_models import MatchedOrderResponse, MatchedProductData
 from models.order_models import ProductData
 from models.review_order_models import ReviewOrderResponse
 from services.product_alias_service import load_alias_index
+from services.approved_product_alias_service import get_approved_alias_row
 from utils.text_normalize import normalize_product_text as _normalize
 
 EXACT_SCORE = 1.0
@@ -35,6 +36,10 @@ _VOLUME_PATTERN = re.compile(r"(\d+(?:\.\d+)?)\s*ml\b")
 _PACKAGE_BEFORE_FORM_PATTERN = re.compile(r"\b(\d+)\s*(amp|vial|tablet|capsule)s?\b")
 _PACKAGE_AFTER_FORM_PATTERN = re.compile(r"\b(amp|vial|tablet|capsule)s?\s*(\d+)\b")
 _LOOSE_PACKAGE_PATTERN = re.compile(r"\b(\d+)\s*s\b")
+_QUANTITY_PATTERN = re.compile(
+    r"\b(?:x|qty|quantity|boxes?|packs?|units?|عدد|كمي[هة]|حب[هة]|علب[هة]?|كارتون|اكس)"
+    r"\s*[:=]?\s*(\d+(?:\.\d+)?)\b"
+)
 _STANDALONE_NUMBER_PATTERN = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)(?![\w.])")
 _MASS_UNITS_TO_MG = {"mcg": 0.001, "mg": 1.0, "g": 1000.0}
 _FORMS = {
@@ -49,6 +54,8 @@ _FORM_GROUPS = (
 _NON_NAME_TOKENS = _FORMS | {
     "mcg", "mg", "g", "ml", "iu", "hikma", "pharma", "pharmaceutical",
     "s", "o",
+    "x", "qty", "quantity", "box", "boxes", "pack", "packs", "units",
+    "عدد", "كمية", "حبة", "علبة", "كارتون", "اكس",
 }
 
 _ALIAS_INDEX = load_alias_index()
@@ -171,6 +178,7 @@ def _extract_standalone_numbers(normalized_text: str) -> list[float]:
         _PACKAGE_BEFORE_FORM_PATTERN,
         _PACKAGE_AFTER_FORM_PATTERN,
         _LOOSE_PACKAGE_PATTERN,
+        _QUANTITY_PATTERN,
     ):
         occupied.extend(match.span() for match in pattern.finditer(normalized_text))
 
@@ -220,14 +228,16 @@ def _infer_unitless_mass_strength(
     plausible = {
         unit: rows for unit, rows in matching_rows_by_unit.items() if rows
     }
-    gram_rows = plausible.get("g", set())
-    if len(plausible) != 1 or len(gram_rows) != 1:
+    if len(plausible) != 1:
         return written, None, None
 
-    canonical = interpretations["g"]
+    inferred_unit, matching_rows = next(iter(plausible.items()))
+    if len(matching_rows) != 1:
+        return written, None, None
+    canonical = interpretations[inferred_unit]
     return (
         replace(written, strengths={"mass_mg": frozenset({canonical})}),
-        "g",
+        inferred_unit,
         canonical,
     )
 
@@ -250,17 +260,65 @@ def _has_strength_conflict(written_norm: str, official_norm: str) -> bool:
 def _fuzzy_token_score(written: frozenset[str], official: frozenset[str]) -> float:
     if not written or not official:
         return 0.0
-    def phonetic(token: str) -> str:
-        return token.replace("ph", "f").replace("ck", "k").replace("qu", "k")
 
     per_token = [
         max(
-            SequenceMatcher(None, phonetic(token), phonetic(candidate)).ratio()
+            max(
+                SequenceMatcher(None, token, candidate).ratio(),
+                max(
+                    SequenceMatcher(None, written_key, official_key).ratio()
+                    for written_key in _cross_script_phonetic_keys(token)
+                    for official_key in _cross_script_phonetic_keys(candidate)
+                ),
+            )
             for candidate in official
         )
         for token in written
     ]
     return sum(per_token) / len(per_token)
+
+
+_ARABIC_PHONETIC = {
+    "ب": "b", "پ": "b", "ت": "t", "ث": "t", "ج": "g", "چ": "sh",
+    "ح": "h", "خ": "h", "د": "d", "ذ": "d", "ر": "r", "ز": "z",
+    "س": "s", "ش": "sh", "ص": "s", "ض": "d", "ط": "t", "ظ": "d",
+    "ع": "", "غ": "g", "ف": "f", "ڤ": "f", "ق": "k", "ك": "k",
+    "گ": "g", "ل": "l", "م": "m", "ن": "n", "ه": "h", "ة": "",
+    "و": "", "ي": "", "ى": "", "ا": "", "ء": "",
+}
+
+
+def _cross_script_phonetic_keys(token: str) -> frozenset[str]:
+    """Return a conservative consonant key shared by Latin/Arabic spellings.
+
+    This is catalog-derived comparison rather than a fixed Arabic alias: every catalog
+    token receives the same key at runtime, ambiguity gates still apply, and the exact
+    official workbook name remains the selected value.
+    """
+    if re.search(r"[\u0600-\u06ff]", token):
+        key = "".join(_ARABIC_PHONETIC.get(char, char) for char in token)
+        variants = {key}
+    else:
+        key = token.lower()
+        for source, target in (
+            ("ph", "f"), ("sh", "sh"), ("ch", "sh"), ("th", "t"),
+            ("ck", "k"), ("qu", "k"), ("q", "k"),
+            ("x", "ks"), ("v", "f"), ("p", "b"), ("j", "g"),
+        ):
+            key = key.replace(source, target)
+        variants = {
+            key.replace("c", "k").replace("g", "g"),
+            key.replace("c", "s").replace("g", "j"),
+        }
+    return frozenset(
+        re.sub(r"(.)\1+", r"\1", re.sub(r"[aeiouy]", "", variant))
+        for variant in variants
+    )
+
+
+def _cross_script_phonetic_key(token: str) -> str:
+    """Compatibility helper returning the stable first key."""
+    return sorted(_cross_script_phonetic_keys(token))[0]
 
 
 def _name_score(written: ProductProfile, product: CatalogProduct) -> float:
@@ -440,6 +498,39 @@ def _exact_alias_candidate(
     return ProductMatchCandidate(official_name=product.official_name, row=product.row, score=EXACT_SCORE)
 
 
+def _exact_catalog_candidate(
+    normalized: str, catalog: tuple[CatalogProduct, ...]
+) -> ProductMatchCandidate | None:
+    matches = [
+        product for product in catalog if _normalize(product.official_name) == normalized
+    ]
+    if len(matches) != 1:
+        return None
+    product = matches[0]
+    return ProductMatchCandidate(
+        official_name=product.official_name, row=product.row, score=EXACT_SCORE
+    )
+
+
+def _approved_alias_candidate(
+    written_product_name: str, catalog: tuple[CatalogProduct, ...]
+) -> ProductMatchCandidate | None:
+    """Use a learned selection only when its pharmaceutical attributes still agree."""
+    row = get_approved_alias_row(written_product_name)
+    if row is None:
+        return None
+    product = next((item for item in catalog if item.row == row), None)
+    if product is None:
+        return None
+    written = _profile(written_product_name)
+    scored = _score_product(written, product, name_score=EXACT_SCORE)
+    if scored.conflict or scored.form_unverifiable:
+        return None
+    return ProductMatchCandidate(
+        official_name=product.official_name, row=product.row, score=EXACT_SCORE
+    )
+
+
 def _rank_scored_products(
     written_product_name: str, catalog: tuple[CatalogProduct, ...]
 ) -> tuple[ProductProfile, list[ScoredProduct], list[ScoredProduct]]:
@@ -482,11 +573,13 @@ def _rank_scored_products(
         key=lambda item: (-item.name_score, item.product.row),
     )
     logger.debug(
-        "Pharmaceutical match trace raw=%r name_tokens=%s extracted_strength=%s "
+        "Pharmaceutical match trace raw=%r normalized=%r name_tokens=%s numeric_tokens=%s extracted_strength=%s "
         "inferred_unit=%s canonical_strength_mg=%s catalog_strengths=%s "
         "removed_rows=%s final_rows=%s",
         written_product_name,
+        effective,
         sorted(written.name_tokens),
+        _extract_standalone_numbers(effective),
         explicitly_extracted_strength,
         inferred_unit,
         canonical_strength,
@@ -533,9 +626,27 @@ def match_single_product(
 ) -> tuple[str, str | None, int | None, float | None, list[ProductMatchCandidate]]:
     """Return the existing status/name/row/score/candidates contract."""
     normalized = _normalize(written_product_name)
+    exact_catalog = _exact_catalog_candidate(normalized, catalog)
+    if exact_catalog is not None:
+        return (
+            "matched",
+            exact_catalog.official_name,
+            exact_catalog.row,
+            exact_catalog.score,
+            [exact_catalog],
+        )
     exact_alias = _exact_alias_candidate(normalized, catalog)
     if exact_alias is not None:
         return "matched", exact_alias.official_name, exact_alias.row, exact_alias.score, [exact_alias]
+    approved_alias = _approved_alias_candidate(written_product_name, catalog)
+    if approved_alias is not None:
+        return (
+            "matched",
+            approved_alias.official_name,
+            approved_alias.row,
+            approved_alias.score,
+            [approved_alias],
+        )
 
     written, usable, conflicted = _rank_scored_products(written_product_name, catalog)
     candidates = [_candidate(item) for item in usable[:MAX_CANDIDATES]]
@@ -569,12 +680,23 @@ def match_single_product(
         return "ambiguous", None, None, None, candidates
 
     if top.score >= AUTO_MATCH_THRESHOLD and not top.form_unverifiable:
+        matched_candidates = [
+            _candidate(item)
+            for item in usable
+            if item.name_score >= NAME_FAMILY_THRESHOLD
+        ][:MAX_CANDIDATES]
         logger.debug(
             "Pharmaceutical automatic-selection decision raw=%r decision=matched row=%s",
             written_product_name,
             top.product.row,
         )
-        return "matched", top.product.official_name, top.product.row, top.score, candidates
+        return (
+            "matched",
+            top.product.official_name,
+            top.product.row,
+            top.score,
+            matched_candidates or [_candidate(top)],
+        )
 
     logger.debug(
         "Pharmaceutical automatic-selection decision raw=%r decision=fuzzy rows=%s",
@@ -636,6 +758,10 @@ def match_products(
         matched.append(
             MatchedProductData(
                 written_product_name=product.written_product_name,
+                strength=product.strength,
+                concentration=product.concentration,
+                dosage_form=product.dosage_form,
+                package_size=product.package_size,
                 quantity=product.quantity,
                 free_quantity=product.free_quantity,
                 free_percentage=product.free_percentage,

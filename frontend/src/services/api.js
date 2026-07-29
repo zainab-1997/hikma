@@ -67,8 +67,12 @@ export function searchProducts(searchText) {
   return getJson('/api/products', searchText ? { search: searchText } : undefined)
 }
 
-export function selectProduct(row, officialName) {
-  return postJson('/api/products/select', { row, official_name: officialName })
+export function selectProduct(row, officialName, writtenProductName) {
+  return postJson('/api/products/select', {
+    row,
+    official_name: officialName,
+    written_product_name: writtenProductName,
+  })
 }
 
 export function generateExcelOrder(request) {

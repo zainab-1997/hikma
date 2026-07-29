@@ -35,8 +35,12 @@ class TransitData(BaseModel):
 
 class ProductData(BaseModel):
     written_product_name: str
-    quantity: int = Field(..., ge=0)
-    free_quantity: int = Field(default=0, ge=0)
+    strength: str | None = None
+    concentration: str | None = None
+    dosage_form: str | None = None
+    package_size: str | None = None
+    quantity: int | None = Field(default=None, ge=0, le=1_000_000)
+    free_quantity: int = Field(default=0, ge=0, le=1_000_000)
     free_percentage: float | None = Field(default=None, ge=0)
     expiry_date: str | None = None
     notes: str | None = None

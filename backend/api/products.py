@@ -15,6 +15,7 @@ from services.product_matching_service import (
     search_catalog_products,
     validate_manual_selection,
 )
+from services.approved_product_alias_service import remember_approved_alias
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +34,23 @@ def list_products(
 
     results = catalog if not search else search_catalog_products(search, catalog=catalog)
 
-    return [CatalogProductItem(row=product.row, official_name=product.official_name) for product in results]
+    return [
+        CatalogProductItem(row=product.row, official_name=product.official_name)
+        for product in results
+    ]
 
 
 @router.post("/select", response_model=ProductMatchCandidate)
 def select_product(request: ProductSelectionRequest) -> ProductMatchCandidate:
     try:
-        return validate_manual_selection(request.row, request.official_name)
+        selected = validate_manual_selection(request.row, request.official_name)
+        if request.written_product_name:
+            remember_approved_alias(
+                request.written_product_name,
+                catalog_row=selected.row,
+                official_product_name=selected.official_name,
+            )
+        return selected
     except InvalidProductSelectionError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except CatalogUnavailableError as exc:

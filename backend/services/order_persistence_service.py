@@ -14,14 +14,27 @@ Guarantees:
 
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 
 from database.repositories import order_repository
 from database.repositories.order_repository import OrderInput, OrderProductInput
 from database.session import session_scope
 from excel.order_writer import ExcelGenerationError
-from models.generate_order_models import GenerateOrderRequest, GeneratedOrderResponse
+from excel.workbook_preview import build_workbook_preview
+from models.generate_order_models import (
+    GenerateOrderRequest,
+    GeneratedOrderResponse,
+    GeneratedOrderSummary,
+    GeneratedProductSummary,
+)
 from models.order_history_models import OrderDetail, OrderListResponse, OrderProductDetail, OrderSummary
-from services.excel_generation_service import delete_generated_file, generate_excel_order
+from services.excel_generation_service import (
+    GENERATED_ORDERS_DIR,
+    delete_generated_file,
+    generate_excel_order,
+    resolve_generated_file_path,
+)
+from services.product_matching_service import _profile
 
 logger = logging.getLogger(__name__)
 
@@ -70,12 +83,81 @@ def _order_input_from_request(request: GenerateOrderRequest, generation) -> Orde
     )
 
 
-def _order_to_response(order) -> GeneratedOrderResponse:
+def _recognized_strength(written_name: str, official_name: str) -> str | None:
+    profile = _profile(written_name)
+    if not profile.strengths:
+        profile = _profile(official_name)
+    mass_values = profile.strengths.get("mass_mg")
+    if mass_values and len(mass_values) == 1:
+        value = next(iter(mass_values))
+        return f"{value:g} mg"
+    return None
+
+
+def _dosage_form(written_name: str, official_name: str) -> str | None:
+    forms = _profile(written_name).forms or _profile(official_name).forms
+    dosage_forms = sorted(forms - {"iv", "im", "po"})
+    return ", ".join(dosage_forms) if dosage_forms else None
+
+
+def _build_generated_summary(order, preview) -> GeneratedOrderSummary:
+    order_date = order.created_at
+    if order_date.tzinfo is None:
+        order_date = order_date.replace(tzinfo=timezone.utc)
+    product_rows = preview.rows[2:-1]
+    products = []
+    for persisted, workbook_row in zip(order.products, product_rows, strict=True):
+        values = {cell.column: cell.value for cell in workbook_row.cells}
+        products.append(
+            GeneratedProductSummary(
+                entered_product=persisted.written_product_name,
+                official_product=persisted.official_product_name,
+                recognized_strength=_recognized_strength(
+                    persisted.written_product_name, persisted.official_product_name
+                ),
+                dosage_form=_dosage_form(
+                    persisted.written_product_name, persisted.official_product_name
+                ),
+                quantity=persisted.quantity,
+                free_quantity=persisted.free_quantity,
+                unit_price=int(values.get(2) or 0),
+                line_total=int(values.get(5) or 0),
+                match_status=persisted.match_status or "matched",
+            )
+        )
+    return GeneratedOrderSummary(
+        customer_name=order.customer_name or order.destination_customer,
+        customer_type=order.customer_type,
+        selected_price_type=order.selected_price_type,
+        order_route="transit" if order.is_transit else "standard",
+        order_date=order_date,
+        order_number=order.order_number,
+        total_products=len(products),
+        total_ordered_quantity=sum(product.quantity for product in products),
+        total_free_quantity=sum(product.free_quantity for product in products),
+        subtotal=sum(product.line_total for product in products),
+        grand_total=order.selected_order_total,
+        products=products,
+    )
+
+
+def _order_to_response(
+    order, *, generated_orders_dir: Path | None = None
+) -> GeneratedOrderResponse:
     created_at = order.created_at
     if created_at.tzinfo is None:
         # SQLite stores UTC timestamps without an offset. Normalize reloads so an
         # idempotent retry is byte-for-byte equivalent to the original API response.
         created_at = created_at.replace(tzinfo=timezone.utc)
+    preview = None
+    summary = None
+    generated_path = resolve_generated_file_path(
+        order.generated_file_id,
+        base_dir=generated_orders_dir or GENERATED_ORDERS_DIR,
+    )
+    if generated_path.is_file():
+        preview = build_workbook_preview(generated_path)
+        summary = _build_generated_summary(order, preview)
     return GeneratedOrderResponse(
         order_id=order.id,
         order_number=order.order_number,
@@ -84,6 +166,8 @@ def _order_to_response(order) -> GeneratedOrderResponse:
         selected_price_type=order.selected_price_type,
         selected_order_total=order.selected_order_total,
         created_at=created_at,
+        summary=summary,
+        workbook_preview=preview,
         excluded_order_notes=order.excluded_order_notes,
     )
 
@@ -97,7 +181,9 @@ def generate_and_persist_order(
         with session_scope(database_url) as session:
             existing = order_repository.find_order_by_client_request_id(session, request.client_request_id)
             if existing is not None:
-                return _order_to_response(existing)
+                return _order_to_response(
+                    existing, generated_orders_dir=generation_kwargs.get("output_dir")
+                )
 
     # May raise ExcelGenerationError — propagates untouched; no order is ever created
     # for a request whose Excel generation failed.
@@ -108,7 +194,9 @@ def generate_and_persist_order(
     try:
         with session_scope(database_url) as session:
             order = order_repository.create_order_with_products(session, order_input)
-            response = _order_to_response(order)
+            response = _order_to_response(
+                order, generated_orders_dir=generation_kwargs.get("output_dir")
+            )
     except Exception as exc:
         deleted = delete_generated_file(generation.filename, base_dir=generation_kwargs.get("output_dir"))
         # Two simultaneous deliveries of the same idempotency key can both pass the
@@ -121,7 +209,9 @@ def generate_and_persist_order(
                     session, request.client_request_id
                 )
                 if existing is not None:
-                    return _order_to_response(existing)
+                    return _order_to_response(
+                        existing, generated_orders_dir=generation_kwargs.get("output_dir")
+                    )
         logger.exception(
             "Failed to persist generated order (file %s, cleanup deleted=%s).", generation.filename, deleted
         )

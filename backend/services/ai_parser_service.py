@@ -14,6 +14,7 @@ from config.settings import Settings
 from config.settings import get_settings
 from models.order_models import ParsedOrderResponse
 from prompts.whatsapp_parser_prompt import SYSTEM_PROMPT
+from services.order_text_postprocessor import postprocess_parsed_order
 
 logger = logging.getLogger(__name__)
 
@@ -99,4 +100,4 @@ def parse_whatsapp_order(message: str) -> ParsedOrderResponse:
         )
         raise ParserResponseInvalidError("The AI response did not match the expected format.")
 
-    return parsed
+    return postprocess_parsed_order(message, parsed)

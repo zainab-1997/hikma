@@ -17,7 +17,11 @@ class ProductMatchCandidate(BaseModel):
 
 class MatchedProductData(BaseModel):
     written_product_name: str
-    quantity: int
+    strength: str | None = None
+    concentration: str | None = None
+    dosage_form: str | None = None
+    package_size: str | None = None
+    quantity: int | None = None
     free_quantity: int = 0
     free_percentage: float | None = None
     expiry_date: str | None = None
@@ -43,3 +47,4 @@ class CatalogProductItem(BaseModel):
 class ProductSelectionRequest(BaseModel):
     row: int
     official_name: str = Field(..., min_length=1)
+    written_product_name: str | None = Field(default=None, min_length=1)

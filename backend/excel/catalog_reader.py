@@ -45,6 +45,8 @@ class CatalogProduct:
     row: int
     official_name: str
     alias: str | None = None
+    drug_store_price: float | None = None
+    pharmacy_price: float | None = None
 
 
 def _extract_alias(official_name: str) -> str | None:
@@ -79,7 +81,25 @@ def _read_catalog_products(template_path: str) -> list[CatalogProduct]:
             value = worksheet[f"{PRODUCT_NAME_COLUMN}{row}"].value
             name = str(value).strip() if value is not None else ""
             if name:
-                products.append(CatalogProduct(row=row, official_name=name, alias=_extract_alias(name)))
+                drug_store_price = worksheet[f"B{row}"].value
+                pharmacy_price = worksheet[f"C{row}"].value
+                products.append(
+                    CatalogProduct(
+                        row=row,
+                        official_name=name,
+                        alias=_extract_alias(name),
+                        drug_store_price=(
+                            float(drug_store_price)
+                            if isinstance(drug_store_price, (int, float))
+                            else None
+                        ),
+                        pharmacy_price=(
+                            float(pharmacy_price)
+                            if isinstance(pharmacy_price, (int, float))
+                            else None
+                        ),
+                    )
+                )
         return products
     finally:
         workbook.close()

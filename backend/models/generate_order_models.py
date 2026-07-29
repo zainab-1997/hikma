@@ -88,6 +88,67 @@ class ExcelGenerationResult(BaseModel):
     )
 
 
+class WorkbookPreviewCell(BaseModel):
+    column: int
+    value: str | int | float | None = None
+    formula: str | None = None
+    colspan: int = Field(default=1, ge=1)
+    font_bold: bool = False
+    font_color: str | None = None
+    fill_color: str | None = None
+    horizontal_alignment: str | None = None
+    number_format: str | None = None
+    border_top: str | None = None
+    border_right: str | None = None
+    border_bottom: str | None = None
+    border_left: str | None = None
+
+
+class WorkbookPreviewRow(BaseModel):
+    row: int
+    height: float | None = None
+    cells: list[WorkbookPreviewCell]
+
+
+class WorkbookPreview(BaseModel):
+    sheet_name: str
+    rows: list[WorkbookPreviewRow]
+    column_widths: list[float | None]
+    max_row: int
+    max_column: int
+    workbook_sha256: str
+
+
+class GeneratedProductSummary(BaseModel):
+    entered_product: str
+    official_product: str
+    recognized_strength: str | None = None
+    dosage_form: str | None = None
+    quantity: int
+    free_quantity: int
+    unit_price: int
+    line_total: int
+    match_status: str
+    warnings: list[str] = Field(default_factory=list)
+
+
+class GeneratedOrderSummary(BaseModel):
+    customer_name: str | None = None
+    customer_type: str | None = None
+    selected_price_type: ConfirmedPriceType
+    order_route: str
+    order_date: datetime
+    order_number: str
+    total_products: int
+    total_ordered_quantity: int
+    total_free_quantity: int
+    subtotal: int
+    discount: int = 0
+    grand_total: int
+    currency: str = "IQD"
+    products: list[GeneratedProductSummary]
+
+
 class GeneratedOrderResponse(BaseModel):
     success: bool = True
     order_id: str
@@ -97,6 +158,8 @@ class GeneratedOrderResponse(BaseModel):
     selected_price_type: ConfirmedPriceType
     selected_order_total: int
     created_at: datetime
+    summary: GeneratedOrderSummary | None = None
+    workbook_preview: WorkbookPreview | None = None
     excluded_order_notes: bool = Field(
         default=False,
         description="True if order_notes were provided but the template has no safe cell to hold them.",

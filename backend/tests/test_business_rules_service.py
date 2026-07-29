@@ -64,13 +64,13 @@ def test_drug_store_uses_drug_store_price():
 
 
 # 4. Office requires price confirmation.
-def test_office_requires_price_confirmation():
+def test_scientific_office_uses_drug_store_price():
     result = apply_business_rules(
         _request(customer=_customer(customer_name="مكتب بغداد", customer_type="office"))
     )
-    assert result.price_type == "unknown"
-    assert result.price_type_requires_confirmation is True
-    assert any(c.type == "office_price_type" for c in result.required_confirmations)
+    assert result.price_type == "drug_store"
+    assert result.price_type_requires_confirmation is False
+    assert not any(c.type == "office_price_type" for c in result.required_confirmations)
 
 
 def test_office_price_override_resolves_confirmation():
@@ -139,7 +139,7 @@ def test_transit_pricing_uses_primary_customer():
     assert result.transit.destination_customer == "صيدلية العين"
 
 
-def test_office_transit_still_requires_price_confirmation():
+def test_office_transit_uses_drug_store_price():
     result = apply_business_rules(
         _request(
             transit=_transit(
@@ -150,8 +150,9 @@ def test_office_transit_still_requires_price_confirmation():
             customer=_customer(customer_name=None, customer_type="unknown", governorate="النجف"),
         )
     )
-    assert result.price_type_requires_confirmation is True
-    assert any(c.type == "office_price_type" for c in result.required_confirmations)
+    assert result.price_type == "drug_store"
+    assert result.price_type_requires_confirmation is False
+    assert not any(c.type == "office_price_type" for c in result.required_confirmations)
     assert result.transit.primary_customer == "مكتب بغداد"
     assert result.transit.destination_customer == "مستشفى النجف"
 

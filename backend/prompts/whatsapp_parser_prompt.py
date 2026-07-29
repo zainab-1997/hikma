@@ -42,8 +42,20 @@ Do not normalize transit party names. Do not reorder them.
 
 Products (one entry per product line):
 - written_product_name: the product name exactly as written in the message. Do not correct
-  spelling and do not map it to an official product name.
-- quantity: the ordered quantity as a number.
+  spelling and do not map it to an official product name. Preserve strength text as part
+  of this field when written beside the name.
+- strength: the pharmaceutical strength exactly as stated, or null.
+- concentration: a mass/volume or percentage concentration exactly as stated, or null.
+- dosage_form: tablet, capsule, vial, ampoule, injection, suspension, etc., or null.
+- package_size: an explicitly stated pack/container count or volume, or null.
+- quantity: the ordered quantity only when a quantity marker or unmistakable order context
+  supports it. Arabic markers include عدد، كمية، حبة، علبة، كارتون، ×، اكس. English
+  markers include qty, quantity, x, boxes, packs, units. A final integer after a strength
+  separated by =, -, /, ×, or whitespace is also order quantity when it is not followed
+  by a pharmaceutical unit. Otherwise return null.
+- A number beside a pharmaceutical product name is strength first, not quantity. For
+  example "فانكو ٥٠٠" has strength 500 and quantity=null; "فانكو ٥٠٠ عدد 20"
+  has strength 500 and quantity=20.
 - free_quantity: bonus units given for free.
   - "100+40" means quantity=100, free_quantity=40, free_percentage=null.
   - "100+20%" means quantity=100, free_quantity=null, free_percentage=20 (do not calculate

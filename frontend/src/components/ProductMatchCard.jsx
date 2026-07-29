@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import MatchStatusBadge from './MatchStatusBadge'
 import ProductSearch from './ProductSearch'
+import { formatQuantityInput, parseOrderQuantity } from '../utils/quantity'
 
 function formatScore(score) {
   if (score == null) return null
@@ -19,14 +20,21 @@ function ProductMatchCard({
 }) {
   const [pendingCandidate, setPendingCandidate] = useState(null)
   const [showSearch, setShowSearch] = useState(false)
+  const [quantityText, setQuantityText] = useState(
+    formatQuantityInput(product.quantity),
+  )
+  const [quantityError, setQuantityError] = useState('')
 
   const isResolved = product.match_status === 'matched' || Boolean(approvedSelection)
   const displayOfficialName = approvedSelection?.official_name || product.matched_official_name
   const effectiveStatus = approvedSelection ? 'approved' : product.match_status
 
   const handleQuantityChange = (event) => {
-    const value = event.target.valueAsNumber
-    onQuantityChange(Number.isNaN(value) ? 0 : value)
+    const rawValue = event.target.value
+    setQuantityText(rawValue)
+    const parsed = parseOrderQuantity(rawValue)
+    setQuantityError(parsed.error)
+    onQuantityChange(parsed.value)
   }
 
   const handleFreeQuantityChange = (event) => {
@@ -50,6 +58,9 @@ function ProductMatchCard({
       <div className="product-match-card__entered">
         <span className="product-match-card__eyebrow">Entered product</span>
         <strong className="product-match-card__name" dir="auto">{product.written_product_name}</strong>
+        <span className="product-row__meta">Recognized strength: {product.strength || 'Not recognized'}</span>
+        {product.concentration && <span className="product-row__meta">Concentration: {product.concentration}</span>}
+        {product.dosage_form && <span className="product-row__meta">Dosage form: {product.dosage_form}</span>}
         {product.free_percentage != null && <span className="product-row__meta">Original bonus: {product.free_percentage}%</span>}
       </div>
       <div className="product-match-card__match">
@@ -60,8 +71,16 @@ function ProductMatchCard({
         )}
         <div className="product-match-card__quantities">
           <label className="field field--inline"><span className="field__label">Quantity</span>
-            <input type="number" min="0" className="field__input field__input--number"
-              value={product.quantity} onChange={handleQuantityChange} /></label>
+            <input type="text" inputMode="numeric" pattern="[0-9٠-٩۰-۹]*" required
+              aria-required="true" aria-invalid={Boolean(quantityError || product.quantity == null)}
+              className="field__input field__input--number" value={quantityText}
+              placeholder="Required / مطلوب" onChange={handleQuantityChange} />
+            {(quantityError || product.quantity == null) && (
+              <span className="field__error" role="alert">
+                {quantityError || 'Quantity is required / الكمية مطلوبة'}
+              </span>
+            )}
+          </label>
           <label className="field field--inline"><span className="field__label">Free</span>
             <input type="number" min="0" className="field__input field__input--number"
               value={product.free_quantity} onChange={handleFreeQuantityChange} /></label>
