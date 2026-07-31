@@ -13,24 +13,31 @@ from models.order_models import ParsedOrderResponse
 from services.business_rules_service import classify_customer_type_from_name
 from services.product_matching_service import _profile, _rank_scored_products
 from utils.text_normalize import normalize_product_text
-from utils.location_normalize import extract_iraqi_location, normalize_governorate
+from utils.location_normalize import extract_iraqi_customer_location, normalize_governorate
 
 _ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
 logger = logging.getLogger(__name__)
 _QUANTITY_MARKER = re.compile(
-    r"(?:×|(?<!\w)x|qty|quantity|boxes?|packs?|units?|عدد|كمي[هة]|حب[هة]|علب[هة]?|كارتون|اكس)"
-    r"\s*[:=]?\s*([٠-٩۰-۹\d]+)",
+    r"(?:×|\*|(?<!\w)x|qty|quantity|pcs?|pieces?|boxes?|packs?|units?|"
+    r"amps?|ampoules?|vials?|عدد|كمي[هة]|حب[هة]|علب[هة]?|كارتون|اكس)"
+    r"\s*[:=]?\s*([٠-٩۰-۹\d]+)\s*$",
     re.IGNORECASE,
 )
 _PHARMACEUTICAL_UNIT = (
     r"mcg|mg|g|ml|iu|units?|مكغ|ميكرو\s*غرام|ملغم|ملغ|ملي\s*غرام|مغ|غرام|جرام|غم|غ|مل|ملل|وحدة"
 )
-_EQUAL_QUANTITY = re.compile(
-    rf"=\s*([٠-٩۰-۹\d]+)(?!\s*(?:{_PHARMACEUTICAL_UNIT})\b)\s*$",
+_SEPARATOR_QUANTITY = re.compile(
+    rf"(?:=|:|：|×|\*|(?<!\w)x|[-/])\s*\(?\s*([٠-٩۰-۹\d]+)\s*\)?"
+    rf"(?!\s*(?:{_PHARMACEUTICAL_UNIT})\b)\s*$",
     re.IGNORECASE,
 )
-_POST_STRENGTH_SEPARATOR_QUANTITY = re.compile(
-    rf"(?:-|/)\s*([٠-٩۰-۹\d]+)(?!\s*(?:{_PHARMACEUTICAL_UNIT})\b)\s*$",
+_PARENTHESIZED_QUANTITY = re.compile(
+    rf"\(\s*([٠-٩۰-۹\d]+)\s*\)(?!\s*(?:{_PHARMACEUTICAL_UNIT})\b)\s*$",
+    re.IGNORECASE,
+)
+_TRAILING_QUANTITY_UNIT = re.compile(
+    r"([٠-٩۰-۹\d]+)\s*(?:pcs?|pieces?|amps?|ampoules?|vials?|"
+    r"boxes?|packs?|units?|حبات?|علب|امبولات?|فيالات?|وحدات?)\s*$",
     re.IGNORECASE,
 )
 _TRAILING_STRENGTH_AND_QUANTITY = re.compile(
@@ -51,9 +58,11 @@ _FREE_QUANTITY_MARKER = re.compile(
 def _quantity_and_product_text(line: str) -> tuple[int | None, str]:
     match = _QUANTITY_MARKER.search(line)
     if match is None:
-        match = _EQUAL_QUANTITY.search(line)
+        match = _TRAILING_QUANTITY_UNIT.search(line)
     if match is None:
-        match = _POST_STRENGTH_SEPARATOR_QUANTITY.search(line)
+        match = _PARENTHESIZED_QUANTITY.search(line)
+    if match is None:
+        match = _SEPARATOR_QUANTITY.search(line)
     if match is None:
         match = _TRAILING_STRENGTH_AND_QUANTITY.search(line)
         if match is not None:
@@ -109,9 +118,15 @@ def _display_concentration(profile) -> str | None:
 
 def postprocess_parsed_order(message: str, parsed: ParsedOrderResponse) -> ParsedOrderResponse:
     customer = parsed.customer.model_copy()
-    extracted_governorate, extracted_city = extract_iraqi_location(message)
+    extracted_governorate, extracted_city, extracted_area = extract_iraqi_customer_location(message)
     customer.governorate = normalize_governorate(customer.governorate) or extracted_governorate
     customer.city = customer.city or extracted_city
+    customer.area = customer.area or extracted_area
+    if not customer.customer_name:
+        for line in (item.strip() for item in message.splitlines() if item.strip()):
+            if classify_customer_type_from_name(line) != "unknown":
+                customer.customer_name = line
+                break
     classified = classify_customer_type_from_name(customer.customer_name)
     if classified != "unknown":
         customer.customer_type = classified
@@ -211,4 +226,25 @@ def postprocess_parsed_order(message: str, parsed: ParsedOrderResponse) -> Parse
         transit.destination_customer,
         transit.destination_governorate,
     )
-    return parsed.model_copy(update={"customer": customer, "transit": transit, "products": products})
+    resolved_missing = []
+    all_quantities_present = bool(products) and all(product.quantity is not None for product in products)
+    for item in parsed.missing_information:
+        normalized_item = normalize_product_text(item)
+        if customer.governorate and "governorate" in normalized_item:
+            continue
+        if customer.city and "city" in normalized_item:
+            continue
+        if customer.area and any(token in normalized_item for token in ("area", "district", "neighborhood")):
+            continue
+        if all_quantities_present and "quantity" in normalized_item:
+            continue
+        resolved_missing.append(item)
+
+    return parsed.model_copy(
+        update={
+            "customer": customer,
+            "transit": transit,
+            "products": products,
+            "missing_information": resolved_missing,
+        }
+    )

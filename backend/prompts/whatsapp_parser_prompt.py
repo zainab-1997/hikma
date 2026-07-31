@@ -31,6 +31,9 @@ Customer:
 - governorate: only if explicitly stated, otherwise null. Never guess.
 - city: only if explicitly stated, otherwise null. Never guess.
 - area: only if explicitly stated, otherwise null. Never guess.
+- Customer locations may appear on separate header lines or as "governorate / area",
+  "governorate - neighbourhood", "مدينة city", or labelled المحافظة/المدينة/المنطقة
+  fields. Associate these explicit values with the customer header, not a product.
 - phone_number: only if explicitly stated, otherwise null.
 
 Transit (used only when the message clearly routes an order through one customer to another):
@@ -54,9 +57,10 @@ Products (one entry per product line):
 - package_size: an explicitly stated pack/container count or volume, or null.
 - quantity: the ordered quantity only when a quantity marker or unmistakable order context
   supports it. Arabic markers include عدد، كمية، حبة، علبة، كارتون، ×، اكس. English
-  markers include qty, quantity, x, boxes, packs, units. A final integer after a strength
-  separated by =, -, /, ×, or whitespace is also order quantity when it is not followed
-  by a pharmaceutical unit. Otherwise return null.
+  markers include qty, quantity, x, *, pcs, amp, vial, boxes, packs, units. A final
+  integer after a strength separated by =, :, -, /, ×, *, parentheses, or whitespace is
+  also order quantity when it is not followed by a pharmaceutical strength unit.
+  Quantity-unit order may be either "pcs 100" or "100 pcs". Otherwise return null.
 - A number beside a pharmaceutical product name is strength first, not quantity. For
   example "فانكو ٥٠٠" has strength 500 and quantity=null; "فانكو ٥٠٠ عدد 20"
   has strength 500 and quantity=20.
