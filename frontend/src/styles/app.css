@@ -3,6 +3,11 @@
   background: var(--color-page);
 }
 
+.mobile-bottom-nav,
+.mobile-new-order-fab {
+  display: none;
+}
+
 .app-shell__desktop-sidebar {
   position: fixed;
   inset: 0 auto 0 0;
@@ -159,7 +164,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
-  padding: var(--space-4) var(--space-8);
+  padding: calc(var(--space-4) + env(safe-area-inset-top, 0px)) var(--space-8) var(--space-4);
   background: rgba(255, 255, 255, 0.96);
   border-bottom: 1px solid var(--color-border);
 }
@@ -273,6 +278,15 @@
   padding: var(--space-8) var(--space-8) 64px;
 }
 
+.app__main--entering {
+  animation: page-enter 220ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(6px) scale(.998); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .app__main--new {
   max-width: var(--form-content-max);
 }
@@ -361,7 +375,11 @@
 @media (max-width: 640px) {
   .topbar {
     min-height: 68px;
-    padding: 10px var(--space-4);
+    padding: calc(10px + env(safe-area-inset-top, 0px)) var(--space-4) 10px;
+  }
+
+  .topbar__menu-button {
+    display: none;
   }
 
   .topbar__titles h1 {
@@ -385,6 +403,136 @@
 
   .app__main {
     gap: var(--space-4);
-    padding: var(--space-5) var(--space-4) var(--space-12);
+    padding: var(--space-5)
+      max(var(--space-4), env(safe-area-inset-right, 0px))
+      calc(108px + env(safe-area-inset-bottom, 0px));
+    padding-left: max(var(--space-4), env(safe-area-inset-left, 0px));
+  }
+
+  .topbar__menu-button,
+  .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .topbar__left {
+    gap: var(--space-2);
+  }
+
+  .app-shell__drawer {
+    width: min(88vw, 320px);
+  }
+
+  .sidebar__nav-item {
+    min-height: 48px;
+  }
+
+  .mobile-bottom-nav {
+    position: fixed;
+    z-index: 65;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-height: calc(68px + env(safe-area-inset-bottom, 0px));
+    padding: 6px max(10px, env(safe-area-inset-right, 0px))
+      env(safe-area-inset-bottom, 0px)
+      max(10px, env(safe-area-inset-left, 0px));
+    background: rgba(255, 255, 255, .96);
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -8px 26px rgba(15, 23, 42, .08);
+    backdrop-filter: blur(16px);
+  }
+
+  .mobile-bottom-nav button {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 56px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 3px;
+    padding: 5px 4px;
+    overflow: hidden;
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    font-weight: 700;
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-lg);
+    touch-action: manipulation;
+  }
+
+  .mobile-bottom-nav button::before {
+    position: absolute;
+    top: 3px;
+    width: 34px;
+    height: 28px;
+    background: transparent;
+    border-radius: var(--radius-pill);
+    content: "";
+    transition: background var(--transition-fast), transform var(--transition-fast);
+  }
+
+  .mobile-bottom-nav button svg,
+  .mobile-bottom-nav button span {
+    position: relative;
+    z-index: 1;
+  }
+
+  .mobile-bottom-nav button:active {
+    transform: scale(.95);
+  }
+
+  .mobile-bottom-nav__item--active {
+    color: var(--color-primary) !important;
+  }
+
+  .mobile-bottom-nav__item--active::before {
+    background: var(--color-primary-soft) !important;
+  }
+
+  .mobile-new-order-fab {
+    position: fixed;
+    z-index: 64;
+    right: max(18px, env(safe-area-inset-right, 0px));
+    bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+    display: grid;
+    width: 52px;
+    height: 52px;
+    place-items: center;
+    color: #fff;
+    background: var(--color-primary);
+    border: 0;
+    border-radius: 50%;
+    box-shadow: 0 12px 28px rgba(37, 99, 235, .28);
+    animation: fab-enter 220ms cubic-bezier(.2, .8, .2, 1) both;
+  }
+
+  .mobile-new-order-fab:active {
+    transform: scale(.92);
+  }
+
+  @keyframes fab-enter {
+    from { opacity: 0; transform: translateY(10px) scale(.9); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+}
+
+@media (max-width: 374px) {
+  .topbar {
+    padding-right: var(--space-3);
+    padding-left: var(--space-3);
+  }
+
+  .status-indicator__label {
+    max-width: 72px;
+  }
+
+  .app__main {
+    padding-right: var(--space-3);
+    padding-left: var(--space-3);
   }
 }

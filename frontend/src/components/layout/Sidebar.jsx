@@ -1,10 +1,5 @@
 import AppIcon from '../ui/AppIcon'
-
-const NAVIGATION = [
-  { id: 'new', label: 'New Order', icon: 'plus' },
-  { id: 'history', label: 'Order History', icon: 'history' },
-  { id: 'analytics', label: 'Analytics', icon: 'chart' },
-]
+import { NAVIGATION } from './navigation'
 
 function Sidebar({ activeView, onNavigate, status, version }) {
   return (

@@ -1,16 +1,23 @@
-import { useRef, useState } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 import AppShell from './components/layout/AppShell'
-import OrderHistory from './components/OrderHistory'
 import OrderInput from './components/OrderInput'
 import OrderPreview from './components/OrderPreview'
 import StatusMessage from './components/StatusMessage'
-import AnalyticsDashboard from './pages/AnalyticsDashboard'
 import OrderProgress from './components/order/OrderProgress'
 import OrderSummaryCard from './components/order/OrderSummaryCard'
 import { applyBusinessRules, generateExcelOrder, matchProducts, parseOrder, selectProduct } from './services/api'
 import { getOrderReadiness } from './utils/orderReadiness'
 import './styles/app.css'
 import './styles/components.css'
+
+const OrderHistory = lazy(() => import('./components/OrderHistory'))
+const AnalyticsDashboard = lazy(() => import('./pages/AnalyticsDashboard'))
+
+function PageSkeleton() {
+  return <div className="page-skeleton" role="status" aria-label="Loading page">
+    <span /><span /><span /><span />
+  </div>
+}
 
 function describeError(error) {
   if (error instanceof TypeError) {
@@ -298,7 +305,7 @@ function App() {
 
   return (
     <AppShell activeView={view} onViewChange={setView}>
-      <main className={`app__main app__main--${view}`}>
+      <main key={view} className={`app__main app__main--${view} app__main--entering`}>
         {view === 'new' ? (
           <div className="new-order-workspace">
             <div className="new-order-workspace__main">
@@ -343,9 +350,9 @@ function App() {
             </aside>
           </div>
         ) : view === 'history' ? (
-          <OrderHistory />
+          <Suspense fallback={<PageSkeleton />}><OrderHistory /></Suspense>
         ) : (
-          <AnalyticsDashboard />
+          <Suspense fallback={<PageSkeleton />}><AnalyticsDashboard /></Suspense>
         )}
       </main>
     </AppShell>

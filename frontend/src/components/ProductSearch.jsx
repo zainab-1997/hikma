@@ -38,6 +38,9 @@ function ProductSearch({ onSelect }) {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
+        {query && <button type="button" className="product-search__clear"
+          onClick={() => { setQuery(''); setResults(null); setError('') }}
+          aria-label="Clear product search">×</button>}
         <button type="submit" className="btn btn--secondary" disabled={isSearching}>
           {isSearching ? 'Searching...' : 'Search'}
         </button>

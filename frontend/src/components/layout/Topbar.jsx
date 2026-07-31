@@ -8,12 +8,13 @@ const PAGE_META = {
   analytics: { title: 'Analytics', description: 'Monitor order, customer, and operational performance.' },
 }
 
-function Topbar({ activeView, onOpenMenu, onStatusChange }) {
+function Topbar({ activeView, onOpenMenu, onStatusChange, menuOpen }) {
   const page = PAGE_META[activeView]
   return (
     <header className="topbar">
       <div className="topbar__left">
-        <IconButton label="Open navigation" className="topbar__menu-button" onClick={onOpenMenu}>
+        <IconButton label="Open navigation" className="topbar__menu-button" onClick={onOpenMenu}
+          aria-expanded={menuOpen} aria-controls="mobile-navigation">
           <AppIcon name="menu" />
         </IconButton>
         <div className="topbar__titles">

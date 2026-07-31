@@ -3,6 +3,7 @@ import AppIcon from '../ui/AppIcon'
 import IconButton from '../ui/IconButton'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
+import MobileNavigation from './MobileNavigation'
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0-rc1'
 
@@ -34,7 +35,7 @@ function AppShell({ activeView, onViewChange, children }) {
       <div className="app-shell__desktop-sidebar">
         <Sidebar activeView={activeView} onNavigate={navigate} status={systemStatus} version={APP_VERSION} />
       </div>
-      <div className="app-shell__drawer" aria-hidden={!drawerOpen} inert={!drawerOpen}>
+      <div id="mobile-navigation" className="app-shell__drawer" aria-hidden={!drawerOpen} inert={!drawerOpen}>
         <div className="app-shell__drawer-head">
           <span>Navigation</span>
           <IconButton label="Close navigation" onClick={() => setDrawerOpen(false)}><AppIcon name="close" /></IconButton>
@@ -44,9 +45,11 @@ function AppShell({ activeView, onViewChange, children }) {
       <button type="button" className="app-shell__overlay" aria-label="Close navigation"
         tabIndex={drawerOpen ? 0 : -1} onClick={() => setDrawerOpen(false)} />
       <div className="app-shell__main">
-        <Topbar activeView={activeView} onOpenMenu={() => setDrawerOpen(true)} onStatusChange={setSystemStatus} />
+        <Topbar activeView={activeView} onOpenMenu={() => setDrawerOpen(true)}
+          onStatusChange={setSystemStatus} menuOpen={drawerOpen} />
         {children}
       </div>
+      <MobileNavigation activeView={activeView} onNavigate={navigate} />
     </div>
   )
 }

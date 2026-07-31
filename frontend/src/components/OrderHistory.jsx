@@ -160,14 +160,14 @@ function OrderHistory() {
             <tbody>{orders.map((order) => {
               const created = formatDate(order.created_at)
               return <tr key={order.order_id}>
-                <td><strong className="history-order-number">{order.order_number}</strong></td>
-                <td dir="auto"><strong>{order.order_title || order.customer_name || 'Not provided'}</strong><small>{order.customer_type ? order.customer_type.replace('_', ' ') : 'Unknown type'}</small></td>
-                <td dir="auto">{order.governorate || 'Not provided'}</td>
-                <td><span className="record-badge">{formatPriceType(order.selected_price_type)}</span></td>
-                <td className="numeric-cell"><strong>{order.selected_order_total.toLocaleString()}</strong><small> IQD</small></td>
-                <td><span>{created.date}</span><small>{created.time}</small></td>
-                <td><EmailStatus order={order} /></td>
-                <td className="action-cell"><div className="row-actions">
+                <td data-label="Order"><strong className="history-order-number">{order.order_number}</strong></td>
+                <td data-label="Customer" dir="auto"><strong>{order.order_title || order.customer_name || 'Not provided'}</strong><small>{order.customer_type ? order.customer_type.replace('_', ' ') : 'Unknown type'}</small></td>
+                <td data-label="Governorate" dir="auto">{order.governorate || 'Not provided'}</td>
+                <td data-label="Price Type"><span className="record-badge">{formatPriceType(order.selected_price_type)}</span></td>
+                <td data-label="Total" className="numeric-cell"><strong>{order.selected_order_total.toLocaleString()}</strong><small> IQD</small></td>
+                <td data-label="Created"><span>{created.date}</span><small>{created.time}</small></td>
+                <td data-label="Email"><EmailStatus order={order} /></td>
+                <td data-label="Actions" className="action-cell"><div className="row-actions">
                   <button type="button" className="btn btn--secondary btn--small" onClick={() => setSelectedOrderId(order.order_id)}>View Details</button>
                   <a className="btn btn--ghost btn--small" href={resolveApiUrl(order.download_url)} download>Download</a>
                   <button type="button" className="btn btn--ghost btn--small" onClick={() => setSendEmailOrder(order)}>Send Email</button>

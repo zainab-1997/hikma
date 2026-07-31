@@ -15,17 +15,22 @@ function CustomerAnalyticsTable({ data, sorting, onSort, onPage }) {
   }
   return <>
     {!items.length ? <div className="analytics-empty">No customers for these filters.</div> : (
-      <div className="analytics-table-wrap"><table className="analytics-table">
+      <><div className="mobile-table-sort-controls" aria-label="Sort customers">
+        {fields.filter(([field]) => sortable.has(field)).map(([field, label]) =>
+          <button type="button" key={field} className={sorting.sort_by === field ? 'is-active' : ''} onClick={() => onSort(field)}>
+            {label}{sorting.sort_by === field ? (sorting.sort_direction === 'asc' ? ' ↑' : ' ↓') : ''}
+          </button>)}
+      </div><div className="analytics-table-wrap"><table className="analytics-table mobile-card-table">
         <thead><tr>{fields.map(([field, label]) => <th key={field} scope="col">
           {sortable.has(field) ? <button type="button" className="table-sort" onClick={() => onSort(field)}>
             {label}{sorting.sort_by === field ? (sorting.sort_direction === 'asc' ? ' ↑' : ' ↓') : ''}
           </button> : label}
         </th>)}</tr></thead>
         <tbody>{items.map((item) => <tr key={`${item.customer_name}-${item.customer_type}-${item.governorate}`}>
-          {fields.map(([field]) => <td key={field} dir={['customer_name', 'governorate'].includes(field) ? 'auto' : undefined}
+          {fields.map(([field, label]) => <td key={field} data-label={label} dir={['customer_name', 'governorate'].includes(field) ? 'auto' : undefined}
             className={['order_count', 'total_sales', 'average_order_value'].includes(field) ? 'numeric-cell' : ''}>{display(item, field)}</td>)}
         </tr>)}</tbody>
-      </table></div>
+      </table></div></>
     )}
     <Pagination total={total} limit={limit} offset={offset} onPage={onPage} />
   </>

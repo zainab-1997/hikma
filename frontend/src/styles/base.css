@@ -7,6 +7,9 @@
 html {
   min-width: 320px;
   background: var(--color-page);
+  overscroll-behavior-y: none;
+  scroll-behavior: smooth;
+  scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
 }
 
 body {
@@ -21,6 +24,7 @@ body {
   background: var(--color-page);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button,
@@ -41,6 +45,13 @@ select,
 textarea {
   transition: border-color var(--transition-fast), background-color var(--transition-fast),
     color var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+}
+
+input,
+select,
+textarea,
+[tabindex] {
+  scroll-margin: 96px 0 124px;
 }
 
 :focus-visible {
@@ -68,6 +79,12 @@ table {
 
 #root {
   min-height: 100vh;
+}
+
+@supports (min-height: 100dvh) {
+  #root {
+    min-height: 100dvh;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

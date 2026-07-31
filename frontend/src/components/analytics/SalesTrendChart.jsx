@@ -34,11 +34,11 @@ function SalesTrendChart({ rows, granularity, onGranularityChange }) {
             </svg>
           </div>
           <div className="analytics-table-wrap">
-            <table className="analytics-table">
+            <table className="analytics-table mobile-card-table">
               <thead><tr><th scope="col">Period</th><th scope="col">Sales</th><th scope="col">Orders</th><th scope="col">Quantity</th><th scope="col">Free</th></tr></thead>
               <tbody>{rows.map((row) => <tr key={row.period}>
-                <td>{row.period}</td><td>{number.format(row.sales_total)} IQD</td><td>{number.format(row.order_count)}</td>
-                <td>{number.format(row.ordered_quantity)}</td><td>{number.format(row.free_quantity)}</td>
+                <td data-label="Period">{row.period}</td><td data-label="Sales">{number.format(row.sales_total)} IQD</td><td data-label="Orders">{number.format(row.order_count)}</td>
+                <td data-label="Quantity">{number.format(row.ordered_quantity)}</td><td data-label="Free">{number.format(row.free_quantity)}</td>
               </tr>)}</tbody>
             </table>
           </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import EmailOrderPanel from './EmailOrderPanel'
 import AppIcon from './ui/AppIcon'
 import { resolveApiUrl } from '../services/api'
@@ -50,6 +50,22 @@ function ExcelGrid({ preview }) {
 
 function PreviewModal({ generatedOrder, onClose }) {
   const preview = generatedOrder.workbook_preview
+  const closeRef = useRef(null)
+  useEffect(() => {
+    const previousFocus = document.activeElement
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    closeRef.current?.focus()
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', closeOnEscape)
+      previousFocus?.focus?.()
+    }
+  }, [onClose])
   return <div className="order-preview-modal-backdrop" role="presentation" onMouseDown={(event) => {
     if (event.target === event.currentTarget) onClose()
   }}>
@@ -58,7 +74,7 @@ function PreviewModal({ generatedOrder, onClose }) {
       <header>
         <div><span className="generated-order__saved">Read-only workbook</span>
           <h2 id="preview-modal-title">Excel Preview</h2></div>
-        <button type="button" className="modal-close-button" onClick={onClose}
+        <button ref={closeRef} type="button" className="modal-close-button" onClick={onClose}
           aria-label="Close preview">×</button>
       </header>
       <div className="order-preview-modal__content">
@@ -82,10 +98,10 @@ function OrderItemsTable({ items }) {
       <table className="generated-items-table">
         <thead><tr><th>Product</th><th>Quantity</th><th>Bonus</th><th>Match Status</th></tr></thead>
         <tbody>{items.map((item, index) => <tr key={`${item.product}-${index}`}>
-          <td dir="auto"><strong>{item.product}</strong></td>
-          <td>{item.quantity.toLocaleString()}</td>
-          <td>{item.bonus ? item.bonus.toLocaleString() : '—'}</td>
-          <td><span className={`generated-match-status generated-match-status--${item.statusKey}`}>
+          <td data-label="Product" dir="auto"><strong>{item.product}</strong></td>
+          <td data-label="Quantity">{item.quantity.toLocaleString()}</td>
+          <td data-label="Bonus">{item.bonus ? item.bonus.toLocaleString() : '—'}</td>
+          <td data-label="Match Status"><span className={`generated-match-status generated-match-status--${item.statusKey}`}>
             {item.status}
           </span></td>
         </tr>)}</tbody>
@@ -128,16 +144,16 @@ function GeneratedOrderReview({
   onNewOrder,
 }) {
   const [showPreview, setShowPreview] = useState(false)
-  const completionRows = buildCompactCompletionRows(
+  const completionRows = useMemo(() => buildCompactCompletionRows(
     generatedOrder,
     formatPriceType(generatedOrder.selected_price_type),
-  )
-  const review = buildGeneratedOrderReview({
+  ), [generatedOrder])
+  const review = useMemo(() => buildGeneratedOrderReview({
     generatedOrder,
     reviewResult,
     matchResult,
     approvedSelections,
-  })
+  }), [generatedOrder, reviewResult, matchResult, approvedSelections])
   if (!generatedOrder.workbook_preview) return null
 
   return <>

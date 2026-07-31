@@ -8,7 +8,9 @@ function AnalyticsSection({ title, subtitle, loading, error, onRetry, children, 
         </div>
       </div>
       {loading ? (
-        <div className="analytics-state" role="status">Loading this section…</div>
+        <div className="section-skeleton" role="status" aria-label={`Loading ${title}`}>
+          <span /><span /><span />
+        </div>
       ) : error ? (
         <div className="analytics-state analytics-state--error">
           <p>Unable to load this analytics section.</p>
