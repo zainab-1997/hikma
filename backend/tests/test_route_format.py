@@ -64,3 +64,34 @@ def test_central_title_builder_appends_only_present_location_parts():
         governorate="البصرة",
         area="العشار",
     ) == "مذخر ساوة - ترانزيت - مستشفى الكوثر - البصرة - العشار"
+
+
+@pytest.mark.parametrize(
+    ("source", "governorate", "area", "expected"),
+    [
+        ("صيدلية العين", "النجف", "النجف", "صيدلية العين - النجف"),
+        ("صيدلية العين - النجف", "النجف", None, "صيدلية العين - النجف"),
+        ("صيدلية العين- النجف", "النجف", "النجف", "صيدلية العين- النجف"),
+        ("Al Ain Pharmacy - Najaf", "Najaf", None, "Al Ain Pharmacy - Najaf"),
+        ("صيدلية العين", "النجف", "حي الأمير", "صيدلية العين - النجف"),
+    ],
+)
+def test_standard_title_never_prints_duplicate_location_parts(
+    source, governorate, area, expected
+):
+    assert build_order_title(
+        source_location=source,
+        is_transit=False,
+        governorate=governorate,
+        area=area,
+    ) == expected
+
+
+def test_transit_title_deduplicates_location_already_present_in_destination():
+    assert build_order_title(
+        source_location="مذخر ساوا",
+        is_transit=True,
+        destination_customer="مستشفى الكوثر - النجف",
+        governorate="النجف",
+        area="النجف",
+    ) == "مذخر ساوا - ترانزيت - مستشفى الكوثر - النجف"
