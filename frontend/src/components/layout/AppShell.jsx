@@ -49,7 +49,7 @@ function AppShell({ activeView, onViewChange, children }) {
           onStatusChange={setSystemStatus} menuOpen={drawerOpen} />
         {children}
       </div>
-      <MobileNavigation activeView={activeView} onNavigate={navigate} />
+      <MobileNavigation activeView={activeView} onViewChange={navigate} />
     </div>
   )
 }

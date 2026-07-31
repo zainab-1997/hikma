@@ -5,6 +5,8 @@ import OrderPreview from './components/OrderPreview'
 import StatusMessage from './components/StatusMessage'
 import OrderProgress from './components/order/OrderProgress'
 import OrderSummaryCard from './components/order/OrderSummaryCard'
+import MobileOrderInput from './components/mobile/MobileOrderInput'
+import MobileOrderReview from './components/mobile/MobileOrderReview'
 import { applyBusinessRules, generateExcelOrder, matchProducts, parseOrder, selectProduct } from './services/api'
 import { getOrderReadiness } from './utils/orderReadiness'
 import './styles/app.css'
@@ -53,6 +55,7 @@ function App() {
   const [generatedOrder, setGeneratedOrder] = useState(null) // GeneratedOrderResponse from /generate-excel
 
   const textareaRef = useRef(null)
+  const mobileTextareaRef = useRef(null)
 
   const resetReview = () => {
     originalParsedOrderRef.current = null
@@ -198,7 +201,8 @@ function App() {
   }
 
   const handleEdit = () => {
-    textareaRef.current?.focus()
+    const isMobile = window.matchMedia('(max-width: 700px)').matches
+    ;(isMobile ? mobileTextareaRef : textareaRef).current?.focus()
   }
 
   const handleNewOrder = () => {
@@ -209,7 +213,10 @@ function App() {
     setMessage('')
     setStatus({ type: '', message: '' })
     resetReview()
-    window.setTimeout(() => textareaRef.current?.focus(), 0)
+    window.setTimeout(() => {
+      const isMobile = window.matchMedia('(max-width: 700px)').matches
+      ;(isMobile ? mobileTextareaRef : textareaRef).current?.focus()
+    }, 0)
   }
 
   const { canGenerate: canConfirm } = getOrderReadiness(
@@ -307,17 +314,56 @@ function App() {
     <AppShell activeView={view} onViewChange={setView}>
       <main key={view} className={`app__main app__main--${view} app__main--entering`}>
         {view === 'new' ? (
-          <div className="new-order-workspace">
-            <div className="new-order-workspace__main">
-              <div className="new-order-intro">
-                <span className="new-order-intro__eyebrow">Guided order processing</span>
-                <h2>Turn a customer message into an approved order</h2>
-                <p>Review every extracted detail and product match before generating the company Excel order.</p>
+          <>
+            <div className="desktop-new-order-composition">
+              <div className="new-order-workspace">
+                <div className="new-order-workspace__main">
+                  <div className="new-order-intro">
+                    <span className="new-order-intro__eyebrow">Guided order processing</span>
+                    <h2>Turn a customer message into an approved order</h2>
+                    <p>Review every extracted detail and product match before generating the company Excel order.</p>
+                  </div>
+                  <OrderInput ref={textareaRef} value={message} onChange={setMessage} onAnalyze={handleAnalyze}
+                    onClear={handleNewOrder} isLoading={isAnalyzing} processingStage={processingStage} />
+                  <StatusMessage type={status.type} message={status.message} onRetry={status.type === 'error' ? handleAnalyze : undefined} />
+                  <OrderPreview
+                    editableOrder={editableOrder}
+                    reviewResult={reviewResult}
+                    matchResult={matchResult}
+                    priceTypeOverride={priceTypeOverride}
+                    approvedSelections={approvedSelections}
+                    approvingIndex={approvingIndex}
+                    approvalErrors={approvalErrors}
+                    onCustomerFieldChange={handleCustomerFieldChange}
+                    onTransitFieldChange={handleTransitFieldChange}
+                    onProductFieldChange={handleProductFieldChange}
+                    onPriceTypeOverrideChange={setPriceTypeOverride}
+                    onApproveSelection={handleApproveSelection}
+                    onReapply={handleReapply}
+                    isReapplying={isReapplying}
+                    onEdit={handleEdit}
+                    onConfirm={handleConfirm}
+                    canConfirm={canConfirm}
+                    isGenerating={isGenerating}
+                    generatedOrder={generatedOrder}
+                    onNewOrder={handleNewOrder}
+                  />
+                </div>
+                <aside className="new-order-workspace__rail">
+                  <OrderProgress currentStep={progressStep} processingLabel={processingStage} />
+                  <OrderSummaryCard reviewResult={reviewResult} matchResult={matchResult} approvedSelections={approvedSelections} />
+                  <section className="order-safety-note">
+                    <strong>Safe order generation</strong>
+                    <p>Every product must be confirmed before generation. The source company workbook is preserved.</p>
+                  </section>
+                </aside>
               </div>
-              <OrderInput ref={textareaRef} value={message} onChange={setMessage} onAnalyze={handleAnalyze}
-                onClear={handleNewOrder} isLoading={isAnalyzing} processingStage={processingStage} />
+            </div>
+            <div className="mobile-new-order-composition">
+              <MobileOrderInput ref={mobileTextareaRef} value={message} onChange={setMessage}
+                onAnalyze={handleAnalyze} isLoading={isAnalyzing} processingStage={processingStage} />
               <StatusMessage type={status.type} message={status.message} onRetry={status.type === 'error' ? handleAnalyze : undefined} />
-              <OrderPreview
+              <MobileOrderReview
                 editableOrder={editableOrder}
                 reviewResult={reviewResult}
                 matchResult={matchResult}
@@ -340,15 +386,7 @@ function App() {
                 onNewOrder={handleNewOrder}
               />
             </div>
-            <aside className="new-order-workspace__rail">
-              <OrderProgress currentStep={progressStep} processingLabel={processingStage} />
-              <OrderSummaryCard reviewResult={reviewResult} matchResult={matchResult} approvedSelections={approvedSelections} />
-              <section className="order-safety-note">
-                <strong>Safe order generation</strong>
-                <p>Every product must be confirmed before generation. The source company workbook is preserved.</p>
-              </section>
-            </aside>
-          </div>
+          </>
         ) : view === 'history' ? (
           <Suspense fallback={<PageSkeleton />}><OrderHistory /></Suspense>
         ) : (

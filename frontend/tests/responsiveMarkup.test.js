@@ -14,6 +14,17 @@ test('mobile navigation exposes accessible expanded and controlled state', () =>
   assert.match(shell, /setDrawerOpen\(false\)/)
 })
 
+test('AppShell integrates MobileNavigation with live view state and navigation callback', () => {
+  const shell = read('../src/components/layout/AppShell.jsx')
+
+  assert.match(shell, /import MobileNavigation from ['"]\.\/MobileNavigation['"]/)
+  assert.match(
+    shell,
+    /<MobileNavigation\s+activeView=\{activeView\}\s+onViewChange=\{navigate\}\s*\/>/,
+  )
+  assert.match(shell, /const navigate = \(view\) => \{[\s\S]*onViewChange\(view\)/)
+})
+
 test('responsive data tables retain labels when rows become mobile cards', () => {
   const sources = [
     '../src/components/OrderHistory.jsx',
@@ -48,6 +59,7 @@ test('premium mobile shell includes safe areas, bottom navigation, lazy pages, a
   assert.match(app, /lazy\(\(\) => import/)
   assert.match(app, /Suspense/)
   assert.match(appCss, /env\(safe-area-inset-bottom/)
+  assert.match(appCss, /@media \(max-width: 700px\)[\s\S]*\.mobile-bottom-nav/)
   assert.match(appCss, /\.mobile-bottom-nav/)
   assert.match(mobileNavigation, /aria-current=/)
   assert.match(html, /viewport-fit=cover/)
