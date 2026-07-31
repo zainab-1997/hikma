@@ -106,6 +106,20 @@ def test_multiple_mixed_language_products_and_header_are_enriched():
     assert parsed.missing_information == []
 
 
+def test_single_line_order_extracts_unlabelled_area_before_product_generically():
+    message = "صيدلية العين بغداد الكراده ميدازولام = 10"
+    ai_result = _ai_shape(["ميدازولام"])
+    ai_result.customer.customer_name = "صيدلية العين"
+
+    with patch("services.order_text_postprocessor.get_catalog_products", return_value=()):
+        parsed = postprocess_parsed_order(message, ai_result)
+
+    assert parsed.customer.governorate == "بغداد"
+    assert parsed.customer.area == "الكراده"
+    assert parsed.products[0].quantity == 10
+    assert parsed.products[0].written_product_name == "ميدازولام"
+
+
 def test_transit_destination_receives_explicit_location():
     message = "مذخر المصدر ترانزيت صيدلية الوجهة\nالنجف - حي الأمير\nProduct 500 = ١٠٠"
     with patch("services.order_text_postprocessor.get_catalog_products", return_value=()):

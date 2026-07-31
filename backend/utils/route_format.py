@@ -115,5 +115,5 @@ def build_order_title(
         destination_customer,
         language,
         governorate,
-        area if is_transit else None,
+        area,
     )

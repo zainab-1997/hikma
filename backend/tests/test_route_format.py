@@ -73,7 +73,7 @@ def test_central_title_builder_appends_only_present_location_parts():
         ("صيدلية العين - النجف", "النجف", None, "صيدلية العين - النجف"),
         ("صيدلية العين- النجف", "النجف", "النجف", "صيدلية العين- النجف"),
         ("Al Ain Pharmacy - Najaf", "Najaf", None, "Al Ain Pharmacy - Najaf"),
-        ("صيدلية العين", "النجف", "حي الأمير", "صيدلية العين - النجف"),
+        ("صيدلية العين", "النجف", "حي الأمير", "صيدلية العين - النجف - حي الأمير"),
     ],
 )
 def test_standard_title_never_prints_duplicate_location_parts(

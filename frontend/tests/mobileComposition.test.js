@@ -27,6 +27,12 @@ test('mobile review is progressive and exposes the three non-wrapping workflow s
   assert.match(styles, /\.mobile-order-stepper li[\s\S]*white-space: nowrap/)
 })
 
+test('mobile customer review displays existing governorate, city, and area fields', () => {
+  assert.match(mobileReview, /value=\{editableOrder\.customer\.governorate \|\| ''\}/)
+  assert.match(mobileReview, /value=\{editableOrder\.customer\.city \|\| ''\}/)
+  assert.match(mobileReview, /value=\{editableOrder\.customer\.area \|\| ''\}/)
+})
+
 test('mobile composition is breakpoint-isolated and desktop composition remains the default', () => {
   assert.match(styles, /\.desktop-new-order-composition\s*\{\s*display: contents;/)
   assert.match(styles, /\.mobile-new-order-composition\s*\{\s*display: none;/)

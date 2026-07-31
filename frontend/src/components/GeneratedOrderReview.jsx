@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import EmailOrderPanel from './EmailOrderPanel'
 import AppIcon from './ui/AppIcon'
 import { resolveApiUrl } from '../services/api'
@@ -66,14 +67,18 @@ function PreviewModal({ generatedOrder, onClose }) {
       previousFocus?.focus?.()
     }
   }, [onClose])
-  return <div className="order-preview-modal-backdrop" role="presentation" onMouseDown={(event) => {
+  return createPortal(<div className="order-preview-modal-backdrop" role="presentation" onMouseDown={(event) => {
     if (event.target === event.currentTarget) onClose()
   }}>
     <section className="order-preview-modal order-preview-modal--workbook" role="dialog"
       aria-modal="true" aria-labelledby="preview-modal-title">
       <header>
         <div><span className="generated-order__saved">Read-only workbook</span>
-          <h2 id="preview-modal-title">Excel Preview</h2></div>
+          <h2 id="preview-modal-title">Excel Preview</h2>
+          <p className="order-preview-modal__dimensions">
+            {preview.max_row} rows · {preview.max_column} columns · {preview.sheet_name}
+          </p>
+        </div>
         <button ref={closeRef} type="button" className="modal-close-button" onClick={onClose}
           aria-label="Close preview">×</button>
       </header>
@@ -88,7 +93,7 @@ function PreviewModal({ generatedOrder, onClose }) {
         </a>
       </footer>
     </section>
-  </div>
+  </div>, document.body)
 }
 
 function OrderItemsTable({ items }) {

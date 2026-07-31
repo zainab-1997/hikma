@@ -174,7 +174,7 @@ def _order_to_response(
             is_transit=order.is_transit,
             destination_customer=order.destination_customer,
             governorate=order.destination_governorate or order.governorate,
-            area=order.destination_area,
+            area=order.destination_area if order.is_transit else order.area,
         ),
         filename=order.generated_filename,
         download_url=f"/api/orders/download/{order.generated_file_id}",
@@ -245,7 +245,7 @@ def _to_summary(order) -> OrderSummary:
         is_transit=order.is_transit,
         destination_customer=order.destination_customer,
         governorate=order.destination_governorate or order.governorate,
-        area=order.destination_area,
+        area=order.destination_area if order.is_transit else order.area,
     )
     return OrderSummary(
         order_id=order.id,
@@ -271,7 +271,7 @@ def _to_detail(order) -> OrderDetail:
         is_transit=order.is_transit,
         destination_customer=order.destination_customer,
         governorate=order.destination_governorate or order.governorate,
-        area=order.destination_area,
+        area=order.destination_area if order.is_transit else order.area,
     )
     return OrderDetail(
         order_id=order.id,

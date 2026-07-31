@@ -175,7 +175,12 @@ def _unknown_customer_confirmation() -> RuleConfirmation:
     )
 
 
-def _build_order_title(transit: TransitData, customer_name: str | None, governorate: str | None) -> str:
+def _build_order_title(
+    transit: TransitData,
+    customer_name: str | None,
+    governorate: str | None,
+    area: str | None,
+) -> str:
     if transit.is_transit:
         primary = transit.primary_customer or "Unknown"
         destination = transit.destination_customer or "Unknown"
@@ -192,6 +197,7 @@ def _build_order_title(transit: TransitData, customer_name: str | None, governor
         source_location=name,
         is_transit=False,
         governorate=governorate,
+        area=area,
     )
 
 
@@ -459,7 +465,12 @@ def apply_business_rules(request: ApplyRulesRequest) -> ReviewOrderResponse:
                 )
             )
 
-    order_title = _build_order_title(transit, customer.customer_name, customer.governorate)
+    order_title = _build_order_title(
+        transit,
+        customer.customer_name,
+        customer.governorate,
+        customer.area,
+    )
 
     if not request.products:
         _add_missing(missing_information, "products")

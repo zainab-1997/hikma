@@ -116,12 +116,65 @@ def _display_concentration(profile) -> str | None:
     return f"{value:g} mg/ml" if category == "mass_mg_per_ml" else f"{value:g} {category}"
 
 
+def _extract_inline_area_before_product(
+    message: str,
+    governorate: str | None,
+    products,
+) -> str | None:
+    """Extract an unlabelled area between a known governorate and first product.
+
+    Real WhatsApp orders are often a single line:
+    ``customer governorate area product = quantity``. Product names from the structured
+    parser provide a safe right-hand boundary without maintaining an area-name list.
+    """
+    governorate_key = normalize_product_text(governorate or "")
+    if not governorate_key:
+        return None
+
+    product_keys = [
+        key
+        for product in products
+        if (key := normalize_product_text(product.written_product_name))
+    ]
+    for raw_line in (line.strip() for line in message.splitlines() if line.strip()):
+        normalized_line = normalize_product_text(raw_line)
+        governorate_start = normalized_line.find(governorate_key)
+        if governorate_start < 0:
+            continue
+        area_start = governorate_start + len(governorate_key)
+        product_starts = [
+            position
+            for key in product_keys
+            if (position := normalized_line.find(key, area_start)) >= 0
+        ]
+        if not product_starts:
+            continue
+        area = normalized_line[area_start:min(product_starts)].strip(" /\\-–—,:")
+        area = re.sub(
+            r"^(?:المنطق[هة]|منطق[هة]|الحي|حي|area|district)\s*[:=]?\s*",
+            "",
+            area,
+            flags=re.IGNORECASE,
+        ).strip()
+        if area and not re.search(r"\d", area):
+            return area
+    return None
+
+
 def postprocess_parsed_order(message: str, parsed: ParsedOrderResponse) -> ParsedOrderResponse:
     customer = parsed.customer.model_copy()
     extracted_governorate, extracted_city, extracted_area = extract_iraqi_customer_location(message)
     customer.governorate = normalize_governorate(customer.governorate) or extracted_governorate
     customer.city = customer.city or extracted_city
-    customer.area = customer.area or extracted_area
+    customer.area = (
+        customer.area
+        or extracted_area
+        or _extract_inline_area_before_product(
+            message,
+            customer.governorate,
+            parsed.products,
+        )
+    )
     if not customer.customer_name:
         for line in (item.strip() for item in message.splitlines() if item.strip()):
             if classify_customer_type_from_name(line) != "unknown":
@@ -145,6 +198,13 @@ def postprocess_parsed_order(message: str, parsed: ParsedOrderResponse) -> Parse
         if source_line:
             explicit_free_quantity, without_free = _free_quantity_and_product_text(source_line)
             explicit_quantity, product_text = _quantity_and_product_text(without_free)
+            written_key = normalize_product_text(product.written_product_name)
+            product_text_key = normalize_product_text(product_text)
+            # When customer, location and product share one line, quantity extraction
+            # operates on the full source line. Keep the parser's product boundary so
+            # customer/location text never leaks into the catalog matcher.
+            if written_key and product_text_key.find(written_key) > 0:
+                product_text = product.written_product_name
 
         profile = _profile(product_text)
         if catalog:

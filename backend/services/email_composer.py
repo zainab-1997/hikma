@@ -50,7 +50,11 @@ def _display_order_title(order) -> str:
             getattr(order, "destination_governorate", None)
             or getattr(order, "governorate", None)
         ),
-        area=getattr(order, "destination_area", None),
+        area=(
+            getattr(order, "destination_area", None)
+            if is_transit
+            else getattr(order, "area", None)
+        ),
     )
 
 

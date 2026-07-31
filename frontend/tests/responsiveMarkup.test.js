@@ -76,3 +76,16 @@ test('mobile interaction layer provides bottom sheets, sticky actions, and skele
   assert.match(css, /@keyframes skeleton-shimmer/)
   assert.match(analyticsSection, /section-skeleton/)
 })
+
+test('Excel preview escapes shell clipping and keeps the entire workbook scrollable', () => {
+  const review = read('../src/components/GeneratedOrderReview.jsx')
+  const css = read('../src/styles/components.css')
+
+  assert.match(review, /createPortal/)
+  assert.match(review, /document\.body/)
+  assert.match(review, /preview\.max_row/)
+  assert.match(review, /preview\.max_column/)
+  assert.match(css, /\.excel-preview-scroll[\s\S]*overflow: auto/)
+  assert.match(css, /\.excel-preview-grid[\s\S]*width: max-content/)
+  assert.match(css, /\.order-preview-modal-backdrop[\s\S]*height: 100dvh/)
+})

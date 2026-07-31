@@ -35,6 +35,7 @@ def standardize_order_request(
             source_location=customer,
             is_transit=False,
             governorate=request.governorate,
+            area=request.area,
         )})
     return request.model_copy(
         update={
