@@ -90,6 +90,11 @@ function MobileOrderReview({
                   value={editableOrder.customer.governorate || ''}
                   onChange={(event) => onCustomerFieldChange('governorate', event.target.value)} />
               </label>
+              <label className="field"><span className="field__label">City</span>
+                <input className="field__input" dir="auto" placeholder="Optional"
+                  value={editableOrder.customer.city || ''}
+                  onChange={(event) => onCustomerFieldChange('city', event.target.value)} />
+              </label>
               <label className="field"><span className="field__label">Area</span>
                 <input className="field__input" dir="auto" placeholder="Optional"
                   value={editableOrder.customer.area || ''}

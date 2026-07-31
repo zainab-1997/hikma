@@ -53,15 +53,30 @@ def test_common_quantity_styles_keep_strength_separate(line, expected):
     [
         ("صيدلية الشفاء\nبغداد\nالمنصور", ("بغداد", None, "المنصور")),
         ("المحافظة: بغداد\nالمنصور", ("بغداد", None, "المنصور")),
-        ("مدينة بغداد\nحي الجامعة", ("بغداد", "بغداد", "حي الجامعه")),
+        ("مدينة بغداد\nحي الجامعة", ("بغداد", "بغداد", "حي الجامعة")),
         ("صيدلية الشفاء\nبغداد / المنصور", ("بغداد", None, "المنصور")),
-        ("مستشفى الكوثر\nالنجف - حي الأمير", ("النجف", None, "حي الامير")),
-        ("صيدلية\nالموصل الجامعة", ("نينوى", "الموصل", "الجامعه")),
-        ("مذخر\nالبصرة الجمهورية", ("البصرة", None, "الجمهوريه")),
+        ("مستشفى الكوثر\nالنجف - حي الأمير", ("النجف", None, "حي الأمير")),
+        ("صيدلية\nالموصل الجامعة", ("نينوى", "الموصل", "الجامعة")),
+        ("مذخر\nالبصرة الجمهورية", ("البصرة", None, "الجمهورية")),
     ],
 )
 def test_customer_location_is_extracted_without_area_name_registry(message, expected):
     assert extract_iraqi_customer_location(message) == expected
+
+
+def test_location_labels_on_one_line_are_extracted_and_preserve_original_spelling():
+    message = "المحافظة: بغداد، المدينة: بغداد، المنطقة: حي الجامعة"
+
+    assert extract_iraqi_customer_location(message) == ("بغداد", "بغداد", "حي الجامعة")
+    assert message == "المحافظة: بغداد، المدينة: بغداد، المنطقة: حي الجامعة"
+
+
+def test_explicit_area_is_kept_even_when_governorate_is_not_present():
+    assert extract_iraqi_customer_location("المنطقة: المنصور") == (
+        None,
+        None,
+        "المنصور",
+    )
 
 
 def _ai_shape(product_names, *, transit=False):
@@ -98,7 +113,7 @@ def test_transit_destination_receives_explicit_location():
 
     assert parsed.products[0].quantity == 100
     assert parsed.transit.destination_governorate == "النجف"
-    assert parsed.transit.destination_area == "حي الامير"
+    assert parsed.transit.destination_area == "حي الأمير"
 
 
 def test_real_parse_route_returns_deterministically_enriched_fields():

@@ -87,6 +87,22 @@ _ORDERISH_LINE = re.compile(
     r"\d|[٠-٩۰-۹]|(?:qty|quantity|عدد|كمي[هة]|free|bonus|مجاني)|[×=*+]",
     re.IGNORECASE,
 )
+_FIELD_LABELS = (
+    r"المحافظ[هة]|محافظ[هة]|المدين[هة]|مدين[هة]|المنطق[هة]|منطق[هة]|"
+    r"الحي|حي|القضاء|قضاء|الناحي[هة]|ناحي[هة]|العنوان|عنوان|الموقع|موقع|"
+    r"governorate|province|city|area|district|neighbou?rhood|address|location"
+)
+
+
+def _label_value(text: str, labels: str) -> str | None:
+    """Read a labelled value without altering the original WhatsApp text."""
+    match = re.search(
+        rf"(?:^|[\n,،;؛|])\s*(?:{labels})\s*[:：=\-/]?\s*"
+        rf"(.+?)(?=\s+(?:{_FIELD_LABELS})\s*[:：=\-/]?|[\n,،;؛|]|$)",
+        text,
+        re.IGNORECASE,
+    )
+    return match.group(1).strip() if match else None
 
 
 def _matched_alias_span(line: str) -> tuple[int, int] | None:
@@ -102,6 +118,19 @@ def _matched_alias_span(line: str) -> tuple[int, int] | None:
     return best
 
 
+def _remainder_after_location_alias(line: str) -> str | None:
+    """Return text following a location alias while retaining the sender's spelling."""
+    best: tuple[int, int] | None = None
+    for _location, aliases in _ENTRIES:
+        for alias in aliases:
+            match = re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", line, re.IGNORECASE)
+            if match and (best is None or match.start() < best[0]):
+                best = match.span()
+    if best is None:
+        return None
+    return line[best[1]:].strip(" /\\-–—,:：،")
+
+
 def extract_iraqi_customer_location(
     text: str | None,
 ) -> tuple[str | None, str | None, str | None]:
@@ -111,15 +140,46 @@ def extract_iraqi_customer_location(
     are deliberately not enumerated: they are captured from labels, separators, or the
     header line immediately following a standalone location.
     """
-    governorate, city = extract_iraqi_location(text)
-    if not text or not governorate:
-        return governorate, city, None
+    if not text:
+        return None, None, None
+
+    governorate_value = _label_value(text, r"المحافظ[هة]|محافظ[هة]|governorate|province")
+    city_value = _label_value(text, r"المدين[هة]|مدين[هة]|city")
+    area_value = _label_value(
+        text,
+        r"المنطق[هة]|منطق[هة]|الحي|حي|القضاء|قضاء|الناحي[هة]|ناحي[هة]|"
+        r"area|district|neighbou?rhood",
+    )
+    named_area = re.search(
+        r"(?:^|[\n,،;؛|])\s*((?:الحي|حي|القضاء|قضاء|الناحي[هة]|ناحي[هة])"
+        r"\s*[:：]?\s*[^\n,،;؛|]+)",
+        text,
+        re.IGNORECASE,
+    )
+    if named_area:
+        area_value = named_area.group(1).strip()
+    address_value = _label_value(text, r"العنوان|عنوان|الموقع|موقع|address|location")
+
+    governorate, city = extract_iraqi_location(governorate_value or text)
+    if governorate is None:
+        governorate, city = extract_iraqi_location(address_value)
+    if city_value:
+        city_governorate, explicit_city = extract_iraqi_location(city_value)
+        if governorate is None:
+            governorate = city_governorate
+        city = explicit_city or city_governorate or city_value
+
+    area: str | None = area_value
+    if not governorate:
+        # An explicitly labelled area is still useful even when no governorate exists.
+        return None, city, area
 
     lines = [re.sub(r"\s+", " ", line).strip(" \t,،;؛") for line in text.splitlines()]
     lines = [line for line in lines if line]
-    area: str | None = None
 
     for index, raw_line in enumerate(lines):
+        if area:
+            break
         labelled_area = _AREA_LABEL.match(_key(raw_line))
         if labelled_area:
             area = labelled_area.group(1).strip()
@@ -128,10 +188,11 @@ def extract_iraqi_customer_location(
         if extract_iraqi_location(raw_line)[0] != governorate:
             continue
 
-        normalized_line = _key(_LOCATION_LABEL.sub("", raw_line))
+        unlabelled_line = _LOCATION_LABEL.sub("", raw_line)
+        normalized_line = _key(unlabelled_line)
         alias_span = _matched_alias_span(normalized_line)
         if alias_span:
-            remainder = normalized_line[alias_span[1]:].strip(" /\\-–—,:")
+            remainder = _remainder_after_location_alias(unlabelled_line)
             if remainder and not _ORDERISH_LINE.search(remainder):
                 area = remainder
                 break
@@ -145,7 +206,7 @@ def extract_iraqi_customer_location(
                 and not _CUSTOMER_HEADER.search(_key(next_line))
                 and not _ORDERISH_LINE.search(next_line)
             ):
-                area = _key(next_line)
+                area = next_line.strip()
                 break
 
     # "مدينة بغداد" explicitly describes the city, even when governorate and city share
