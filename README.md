@@ -2,6 +2,11 @@
 
 An AI-assisted pharmaceutical order automation system designed to transform unstructured WhatsApp-style customer orders into structured, validated, and ready-to-process order data.
 
+## Live Demo
+
+🌐 [Open Hikma Order Automation System](https://hikma-frontend.onrender.com)
+
+
 ## Overview
 
 Hikma was built to solve a real operational problem in pharmaceutical order processing. Customer orders often arrive as unstructured text with different product names, quantities, bonuses, dosages, abbreviations, and notes.
