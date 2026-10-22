@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Secrets
+.env
+
+# Node
+node_modules/
+dist/
+
+# OS / tools
+.DS_Store
+.claude/
